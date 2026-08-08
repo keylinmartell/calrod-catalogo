@@ -1,0 +1,55 @@
+/*
+ * CalRod — design tokens (sección 5 del brief)
+ * Modo oscuro por defecto: es el único tema de la Fase 1.
+ */
+:root {
+  /* Color */
+  --bg: #15130f; /* carbón cálido, no negro puro */
+  --surface: #1c1913; /* tarjetas y paneles */
+  --surface-2: #242019; /* superficies elevadas / hover */
+  --orange: #e2762a; /* acento de marca: CTA, precios, badges */
+  --orange-2: #f08c3f; /* variante clara para texto sobre oscuro */
+  --orange-dim: rgba(226, 118, 42, 0.14); /* relleno tenue: chips, eyebrow, íconos */
+  --cream: #f2eedf; /* texto principal */
+  --charcoal: #8c877c; /* trazo del engrane */
+  /* Texto en dos niveles (diseño v3): secundario y terciario/apagado. */
+  --text-dim: #a69f8e; /* texto secundario: leads, meta */
+  --text-faint: #6b6558; /* texto terciario: sku, placeholders, sellos */
+
+  /* Derivados de estado */
+  --ok: #6bbf7b;
+  --warn: #f0b73f;
+  --danger: #d95c4a;
+
+  /* Bordes y líneas */
+  --border: rgba(242, 238, 223, 0.08);
+  --border-strong: rgba(242, 238, 223, 0.16);
+
+  /* Tipografía */
+  --font-display: 'Sora', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  /* Radios */
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 18px;
+
+  /* Sombras */
+  --shadow-card: 0 1px 0 rgba(242, 238, 223, 0.04),
+    0 8px 24px rgba(0, 0, 0, 0.35);
+
+  /* Espaciado base */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* Layout */
+  --container: 1200px;
+  --header-h: 68px;
+}
