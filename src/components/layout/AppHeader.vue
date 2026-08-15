@@ -158,6 +158,11 @@ const { theme, toggleTheme } = useTheme()
     height: 148px;
     margin-block: -44px;
   }
+  /* Pega el logo al borde izquierdo: contrarresta el padding-inline del
+     .container para ganar espacio en la barra estrecha. */
+  .brand {
+    margin-left: calc(-1 * var(--space-4));
+  }
   .header__inner {
     gap: var(--space-3);
   }
