@@ -99,7 +99,7 @@ async function onSubmit() {
 }
 
 .auth__eyebrow {
-  color: var(--orange-2);
+  color: var(--blue-2);
   font-size: 0.75rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -149,7 +149,7 @@ async function onSubmit() {
 }
 
 .field__input:focus {
-  border-color: var(--orange);
+  border-color: var(--blue);
 }
 
 .field__input::placeholder {
@@ -174,12 +174,12 @@ async function onSubmit() {
 }
 
 .btn--primary {
-  background: var(--orange);
-  color: #1a1206;
+  background: var(--blue);
+  color: #eceef2;
 }
 
 .btn--primary:hover:not(:disabled) {
-  background: var(--orange-2);
+  background: var(--blue-2);
 }
 
 .btn:disabled {
@@ -195,7 +195,7 @@ async function onSubmit() {
 }
 
 .auth__link {
-  color: var(--orange-2);
+  color: var(--blue-2);
   font-weight: 600;
   text-decoration: underline;
   text-underline-offset: 3px;

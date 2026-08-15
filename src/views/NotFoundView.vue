@@ -24,7 +24,7 @@ import { RouterLink } from 'vue-router'
 }
 
 .notfound__code {
-  color: var(--orange);
+  color: var(--blue);
   font-size: 3rem;
   font-weight: 600;
 }
@@ -44,11 +44,11 @@ import { RouterLink } from 'vue-router'
   padding: var(--space-3) var(--space-5);
   border-radius: var(--radius);
   font-weight: 600;
-  background: var(--orange);
-  color: #1a1206;
+  background: var(--blue);
+  color: #eceef2;
 }
 
 .btn--primary:hover {
-  background: var(--orange-2);
+  background: var(--blue-2);
 }
 </style>

@@ -1,14 +1,13 @@
-export type PartCategory =
-  | 'frenos'
-  | 'motor'
-  | 'suspension'
-  | 'electrico'
-  | 'carroceria'
-  | 'filtros'
-
 export type OriginType = 'original' | 'alternativa' | 'remanufacturada'
 
 export type Availability = 'disponible' | 'stock_bajo' | 'agotado'
+
+export interface Category {
+  id: string
+  name: string
+  slug: string
+  created_at?: string
+}
 
 export interface PartSpec {
   id: number
@@ -30,7 +29,7 @@ export interface Part {
   id: string
   code: string
   name: string
-  category: PartCategory
+  category_id: string | null
   brand: string
   origin_type: OriginType
   price: number
@@ -39,18 +38,10 @@ export interface Part {
   material: string | null
   image_url: string | null
   created_at: string
+  categories?: Category | null
   part_specs?: PartSpec[]
   part_compatibility?: PartCompatibility[]
 }
-
-export const CATEGORIES: { value: PartCategory; label: string }[] = [
-  { value: 'frenos', label: 'Frenos' },
-  { value: 'motor', label: 'Motor' },
-  { value: 'suspension', label: 'Suspensión' },
-  { value: 'electrico', label: 'Eléctrico' },
-  { value: 'carroceria', label: 'Carrocería' },
-  { value: 'filtros', label: 'Filtros' },
-]
 
 export const AVAILABILITY_LABELS: Record<Availability, string> = {
   disponible: 'Disponible',
@@ -77,7 +68,7 @@ export interface Profile {
 export interface PartInput {
   code: string
   name: string
-  category: PartCategory
+  category_id: string | null
   brand: string
   origin_type: OriginType
   price: number
@@ -85,6 +76,29 @@ export interface PartInput {
   description: string | null
   material: string | null
   image_url: string | null
+}
+
+/** Campos escribibles de `categories` (sin id/created_at). */
+export interface CategoryInput {
+  name: string
+  slug: string
+}
+
+// ── Ubicación de la tienda (fila única en store_settings, 0007) ──────────────
+
+export interface StoreSettings {
+  id: number
+  address: string
+  lat: number
+  lng: number
+  updated_at?: string
+}
+
+/** Campos editables de la ubicación desde el panel admin. */
+export interface StoreSettingsInput {
+  address: string
+  lat: number
+  lng: number
 }
 
 /** Fila de spec en el formulario (sin id/part_id: se generan al guardar). */

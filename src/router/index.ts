@@ -8,7 +8,7 @@ const routes: RouteRecordRaw[] = [
     name: 'catalog',
     component: CatalogView,
     meta: {
-      title: 'Respuestos CalRod — Catálogo de piezas',
+      title: 'Repuestos CalRod — Catálogo de piezas',
       description:
         'Catálogo de piezas de auto: frenos, motor, suspensión, eléctrico, carrocería y filtros. Busca por marca y modelo compatible.',
     },
@@ -19,7 +19,7 @@ const routes: RouteRecordRaw[] = [
     // Lazy: la ficha de detalle no hace falta en la carga inicial del catálogo.
     component: () => import('@/views/PartDetailView.vue'),
     meta: {
-      title: 'Pieza — Respuestos CalRod',
+      title: 'Pieza — Repuestos CalRod',
       description: 'Ficha técnica y compatibilidad de la pieza.',
     },
   },
@@ -30,7 +30,7 @@ const routes: RouteRecordRaw[] = [
     name: 'admin',
     component: () => import('@/views/AdminView.vue'),
     meta: {
-      title: 'Panel — Respuestos CalRod',
+      title: 'Panel — Repuestos CalRod',
       description: 'Acceso interno.',
       noindex: true,
     },
@@ -40,7 +40,7 @@ const routes: RouteRecordRaw[] = [
     name: 'not-found',
     component: () => import('@/views/NotFoundView.vue'),
     meta: {
-      title: 'Página no encontrada — Respuestos CalRod',
+      title: 'Página no encontrada — Repuestos CalRod',
       description: 'La página que buscas no existe.',
     },
   },

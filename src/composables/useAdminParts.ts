@@ -110,7 +110,7 @@ export function toPartInput(part: Part): PartInput {
   return {
     code: part.code,
     name: part.name,
-    category: part.category,
+    category_id: part.category_id,
     brand: part.brand,
     origin_type: part.origin_type,
     price: part.price,

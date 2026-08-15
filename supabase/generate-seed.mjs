@@ -175,19 +175,50 @@ for (const [cat, cfg] of Object.entries(CATS)) {
   }
 }
 
-// Ensamblar SQL con CTE por pieza para resolver los ids sin hardcodearlos.
+// Ensamblar SQL. Primero se crean las categorías reales del negocio; luego cada
+// pieza resuelve su category_id por slug con una subconsulta. Los slugs coinciden
+// con los usados por CategoryIcon.vue en el frontend. La clave de CATS (arriba)
+// mapea a estos slugs vía CAT_SLUG.
+const CATEGORY_ROWS = [
+  ['Alimentación e Inyección', 'alimentacion-e-inyeccion'],
+  ['Carrocería', 'carroceria'],
+  ['Dirección y Suspensión', 'direccion-y-suspension'],
+  ['Freno', 'freno'],
+  ['Lubricantes', 'lubricantes'],
+  ['Motor', 'motor'],
+  ['Sistema Eléctrico', 'sistema-electrico'],
+  ['Sistema Escape', 'sistema-escape'],
+  ['Transmisión', 'transmision'],
+]
+
+// Mapa de la clave interna de CATS al slug real de la categoría.
+const CAT_SLUG = {
+  frenos: 'freno',
+  motor: 'motor',
+  suspension: 'direccion-y-suspension',
+  electrico: 'sistema-electrico',
+  carroceria: 'carroceria',
+  filtros: 'alimentacion-e-inyeccion',
+}
+
 let sql = `-- supabase/seed.sql
 -- Datos de ejemplo del catálogo CalRod (${rows.length} piezas).
 -- Correr UNA sola vez desde el SQL Editor de Supabase (o via Supabase CLI).
 -- Idempotente en 'parts' por 'code' (on conflict do nothing); specs/compat se
 -- insertan resolviendo el id por code, así puedes re-correrlo tras un truncate.
 
+-- Categorías (slug estable; parts.category_id apunta aquí).
+insert into categories (name, slug) values
+${CATEGORY_ROWS.map(([name, slug]) => `  ('${esc(name)}', '${slug}')`).join(',\n')}
+on conflict (slug) do nothing;
+
 `
 
 for (const r of rows) {
+  const catSlug = CAT_SLUG[r.cat] ?? r.cat
   sql += `with p as (
-  insert into parts (code, name, category, brand, origin_type, price, availability, description, material, image_url)
-  values ('${esc(r.code)}', '${esc(r.name)}', '${r.cat}', '${esc(r.brand)}', '${r.origin}', ${r.price}, '${r.availability}', '${esc(r.description)}', '${esc(r.material)}', '${esc(r.image_url)}')
+  insert into parts (code, name, category_id, brand, origin_type, price, availability, description, material, image_url)
+  values ('${esc(r.code)}', '${esc(r.name)}', (select id from categories where slug = '${catSlug}'), '${esc(r.brand)}', '${r.origin}', ${r.price}, '${r.availability}', '${esc(r.description)}', '${esc(r.material)}', '${esc(r.image_url)}')
   on conflict (code) do update set name = excluded.name
   returning id
 )`

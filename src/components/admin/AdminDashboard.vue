@@ -6,6 +6,9 @@ import { useAdminParts } from '@/composables/useAdminParts'
 import type { Part } from '@/types/part'
 import { AVAILABILITY_LABELS } from '@/types/part'
 import PartForm from '@/components/admin/PartForm.vue'
+import CategoryManager from '@/components/admin/CategoryManager.vue'
+import StoreLocationManager from '@/components/admin/StoreLocationManager.vue'
+import GearSpinner from '@/components/brand/GearSpinner.vue'
 
 const auth = useAuthStore()
 const { fetchParts } = useParts()
@@ -14,6 +17,9 @@ const { deletePart } = useAdminParts()
 const parts = ref<Part[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
+
+// Pestaña activa del panel: catálogo de piezas, categorías o ubicación.
+const tab = ref<'parts' | 'categories' | 'location'>('parts')
 
 // Vista: 'list' | 'edit'. En 'edit', `editing` es null para "nueva pieza".
 const view = ref<'list' | 'edit'>('list')
@@ -80,69 +86,107 @@ onMounted(loadList)
         <h1 class="dash__title">Administrar catálogo</h1>
       </div>
       <div class="dash__actions">
-        <button v-if="view === 'list'" class="btn btn--primary" @click="newPart">
+        <button
+          v-if="tab === 'parts' && view === 'list'"
+          class="btn btn--primary"
+          @click="newPart"
+        >
           + Nueva pieza
         </button>
         <button class="btn btn--ghost" @click="auth.signOut()">Cerrar sesión</button>
       </div>
     </header>
 
-    <!-- Formulario de alta/edición -->
-    <PartForm
-      v-if="view === 'edit'"
-      :part="editing"
-      @saved="onSaved"
-      @cancel="onCancel"
-    />
+    <!-- Pestañas: Piezas | Categorías -->
+    <nav class="dash__tabs" aria-label="Secciones del panel">
+      <button
+        class="dash__tab"
+        :class="{ 'dash__tab--active': tab === 'parts' }"
+        @click="tab = 'parts'"
+      >
+        Piezas
+      </button>
+      <button
+        class="dash__tab"
+        :class="{ 'dash__tab--active': tab === 'categories' }"
+        @click="tab = 'categories'"
+      >
+        Categorías
+      </button>
+      <button
+        class="dash__tab"
+        :class="{ 'dash__tab--active': tab === 'location' }"
+        @click="tab = 'location'"
+      >
+        Ubicación
+      </button>
+    </nav>
 
-    <!-- Lista -->
+    <!-- Sección: categorías -->
+    <CategoryManager v-if="tab === 'categories'" />
+
+    <!-- Sección: ubicación de la tienda -->
+    <StoreLocationManager v-else-if="tab === 'location'" />
+
+    <!-- Sección: piezas -->
     <template v-else>
-      <div v-if="loading" class="dash__state">
-        <div class="spinner" aria-hidden="true"></div>
-        <p>Cargando piezas…</p>
-      </div>
+      <!-- Formulario de alta/edición -->
+      <PartForm
+        v-if="view === 'edit'"
+        :part="editing"
+        @saved="onSaved"
+        @cancel="onCancel"
+      />
 
-      <div v-else-if="error" class="dash__state dash__state--error" role="alert">
-        <p>{{ error }}</p>
-        <button class="btn btn--ghost" @click="loadList">Reintentar</button>
-      </div>
+      <!-- Lista -->
+      <template v-else>
+        <div v-if="loading" class="dash__state">
+          <GearSpinner :size="44" />
+          <p>Cargando piezas…</p>
+        </div>
 
-      <p v-else-if="!parts.length" class="dash__state">
-        Aún no hay piezas. Crea la primera con “Nueva pieza”.
-      </p>
+        <div v-else-if="error" class="dash__state dash__state--error" role="alert">
+          <p>{{ error }}</p>
+          <button class="btn btn--ghost" @click="loadList">Reintentar</button>
+        </div>
 
-      <div v-else class="dash__list">
-        <div v-for="part in parts" :key="part.id" class="row">
-          <div class="row__media">
-            <img
-              v-if="part.image_url"
-              :src="part.image_url"
-              :alt="part.name"
-              class="row__img"
-            />
-            <div v-else class="row__img row__img--empty" aria-hidden="true">
-              <span class="mono">—</span>
+        <p v-else-if="!parts.length" class="dash__state">
+          Aún no hay piezas. Crea la primera con “Nueva pieza”.
+        </p>
+
+        <div v-else class="dash__list">
+          <div v-for="part in parts" :key="part.id" class="row">
+            <div class="row__media">
+              <img
+                v-if="part.image_url"
+                :src="part.image_url"
+                :alt="part.name"
+                class="row__img"
+              />
+              <div v-else class="row__img row__img--empty" aria-hidden="true">
+                <span class="mono">—</span>
+              </div>
+            </div>
+
+            <div class="row__info">
+              <h2 class="row__name">{{ part.name }}</h2>
+              <p class="row__meta mono">
+                {{ part.code }} · {{ priceFmt(part.price) }} ·
+                {{ AVAILABILITY_LABELS[part.availability] }}
+              </p>
+            </div>
+
+            <div class="row__actions">
+              <button class="btn btn--ghost btn--sm" @click="editPart(part)">
+                Editar
+              </button>
+              <button class="btn btn--danger btn--sm" @click="removePart(part)">
+                Borrar
+              </button>
             </div>
           </div>
-
-          <div class="row__info">
-            <h2 class="row__name">{{ part.name }}</h2>
-            <p class="row__meta mono">
-              {{ part.code }} · {{ priceFmt(part.price) }} ·
-              {{ AVAILABILITY_LABELS[part.availability] }}
-            </p>
-          </div>
-
-          <div class="row__actions">
-            <button class="btn btn--ghost btn--sm" @click="editPart(part)">
-              Editar
-            </button>
-            <button class="btn btn--danger btn--sm" @click="removePart(part)">
-              Borrar
-            </button>
-          </div>
         </div>
-      </div>
+      </template>
     </template>
   </div>
 </template>
@@ -163,7 +207,7 @@ onMounted(loadList)
 }
 
 .dash__eyebrow {
-  color: var(--orange-2);
+  color: var(--blue-2);
   font-size: 0.75rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -179,6 +223,30 @@ onMounted(loadList)
 .dash__actions {
   display: flex;
   gap: var(--space-3);
+}
+
+.dash__tabs {
+  display: flex;
+  gap: var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+
+.dash__tab {
+  padding: var(--space-3) var(--space-4);
+  color: var(--charcoal);
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.dash__tab:hover {
+  color: var(--cream);
+}
+
+.dash__tab--active {
+  color: var(--blue-2);
+  border-bottom-color: var(--blue);
 }
 
 .dash__state {
@@ -264,12 +332,12 @@ onMounted(loadList)
 }
 
 .btn--primary {
-  background: var(--orange);
-  color: #1a1206;
+  background: var(--blue);
+  color: #eceef2;
 }
 
 .btn--primary:hover {
-  background: var(--orange-2);
+  background: var(--blue-2);
 }
 
 .btn--ghost {
@@ -279,7 +347,7 @@ onMounted(loadList)
 }
 
 .btn--ghost:hover {
-  border-color: var(--orange);
+  border-color: var(--blue);
 }
 
 .btn--danger {
@@ -290,21 +358,6 @@ onMounted(loadList)
 
 .btn--danger:hover {
   background: rgba(217, 92, 74, 0.22);
-}
-
-.spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--surface-2);
-  border-top-color: var(--orange);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 @media (max-width: 640px) {

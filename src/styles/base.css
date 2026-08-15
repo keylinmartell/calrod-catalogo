@@ -15,10 +15,9 @@ html {
 
 body {
   background-color: var(--bg);
-  /* Resplandor cálido de marca en la parte superior (diseño v3). */
   background-image:
-    radial-gradient(ellipse 900px 520px at 10% -8%, rgba(226, 118, 42, 0.1), transparent 60%),
-    radial-gradient(ellipse 640px 480px at 100% 4%, rgba(226, 118, 42, 0.05), transparent 60%);
+    radial-gradient(ellipse 900px 520px at 10% -8%, rgba(26, 61, 110, 0.05), transparent 60%),
+    radial-gradient(ellipse 640px 480px at 100% 4%, rgba(184, 190, 200, 0.04), transparent 60%);
   background-repeat: no-repeat;
   background-attachment: fixed;
   color: var(--cream);
@@ -62,9 +61,9 @@ input {
   font-family: inherit;
 }
 
-/* Accesibilidad: foco visible consistente (requisito no funcional §7) */
+/* Accesibilidad: foco visible consistente */
 :focus-visible {
-  outline: 2px solid var(--orange-2);
+  outline: 2px solid var(--blue-2);
   outline-offset: 2px;
   border-radius: 4px;
 }

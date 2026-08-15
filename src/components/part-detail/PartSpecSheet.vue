@@ -1,61 +1,74 @@
 <script setup lang="ts">
-import type { PartSpec } from '@/types/part'
-
-defineProps<{ specs: PartSpec[]; material?: string | null }>()
+defineProps<{
+  specs: { label: string; value: string }[]
+  material?: string | null
+}>()
 </script>
 
 <template>
-  <div class="specsheet">
-    <h2 class="specsheet__title">Especificaciones</h2>
-    <table class="specsheet__table">
-      <tbody>
-        <tr v-if="material">
-          <th scope="row">Material</th>
-          <td class="mono">{{ material }}</td>
-        </tr>
-        <tr v-for="spec in specs" :key="spec.id">
-          <th scope="row">{{ spec.label }}</th>
-          <td class="mono">{{ spec.value }}</td>
-        </tr>
-      </tbody>
-    </table>
-    <p v-if="!specs.length && !material" class="specsheet__empty">
-      Sin especificaciones registradas.
-    </p>
-  </div>
+  <section class="panel-card">
+    <h2 class="panel-title">
+      <span class="panel-icon">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="var(--blue-2)" stroke-width="1.7">
+          <path d="M14.7 6.3a4 4 0 0 1-5.4 5.4L4 17v3h3l5.3-5.3a4 4 0 0 1 5.4-5.4l-2.5 2.5-2-2z"/>
+        </svg>
+      </span>
+      Especificaciones
+    </h2>
+
+    <dl class="spec-list">
+      <div v-if="material" class="spec-row">
+        <dt>Material</dt>
+        <dd class="mono">{{ material }}</dd>
+      </div>
+      <div v-for="s in specs" :key="s.label" class="spec-row">
+        <dt>{{ s.label }}</dt>
+        <dd class="mono">{{ s.value }}</dd>
+      </div>
+      <p v-if="!material && !specs.length" class="empty-note">
+        Sin especificaciones registradas todavía.
+      </p>
+    </dl>
+  </section>
 </template>
 
 <style scoped>
-.specsheet__title {
+.panel-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5) var(--space-6);
+}
+.panel-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
   font-size: 1.05rem;
-  margin-bottom: var(--space-3);
+  font-weight: 700;
+  margin-bottom: var(--space-4);
 }
-
-.specsheet__table {
-  width: 100%;
-  border-collapse: collapse;
+.panel-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  background: rgba(46,111,224,0.14);
+  border: 1px solid rgba(46,111,224,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
-
-.specsheet__table th,
-.specsheet__table td {
-  text-align: left;
-  padding: var(--space-3) 0;
+.spec-list { display: flex; flex-direction: column; }
+.spec-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 11px 0;
   border-bottom: 1px solid var(--border);
-  vertical-align: top;
+  font-size: 0.85rem;
 }
-
-.specsheet__table th {
-  color: var(--charcoal);
-  font-weight: 500;
-  width: 40%;
-}
-
-.specsheet__table td {
-  color: var(--cream);
-}
-
-.specsheet__empty {
-  color: var(--charcoal);
-  font-size: 0.9rem;
-}
+.spec-row:last-child { border-bottom: none; }
+.spec-row dt { color: var(--charcoal); margin: 0; }
+.spec-row dd { color: var(--cream); margin: 0; }
+.empty-note { color: var(--charcoal); font-size: 0.82rem; font-style: italic; margin: 0; }
 </style>

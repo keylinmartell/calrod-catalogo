@@ -12,11 +12,11 @@ defineProps<{ parts: Part[] }>()
 </template>
 
 <style scoped>
-/* Grid responsive: auto-fill, mínimo ~255px por tarjeta (§6). */
+/* Grid responsive: auto-fill, mínimo ~215px por tarjeta (más chicas en grande). */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(255px, 1fr));
-  gap: var(--space-5);
+  grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+  gap: var(--space-4);
 }
 
 @media (max-width: 480px) {

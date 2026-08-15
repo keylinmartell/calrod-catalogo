@@ -54,7 +54,7 @@ function onInput(e: Event) {
 }
 
 .search:focus-within {
-  border-color: var(--orange);
+  border-color: var(--blue);
 }
 
 .search__icon {

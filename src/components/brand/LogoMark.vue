@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /**
  * LogoMark — ícono de marca CalRod: engrane + llave en trazo limpio de línea,
- * sin la textura grunge del logo físico (§5). El engrane usa el color charcoal
- * y la llave el naranja de marca.
+ * sin la textura grunge del logo físico (§5). El engrane usa plata/cromo
+ * y la llave el azul de marca.
  */
 withDefaults(defineProps<{ size?: number }>(), { size: 40 })
 </script>
@@ -19,7 +19,7 @@ withDefaults(defineProps<{ size?: number }>(), { size: 40 })
   >
     <!-- Engrane: aro dentado en trazo limpio -->
     <g
-      stroke="var(--charcoal)"
+      stroke="var(--chrome)"
       stroke-width="2.2"
       stroke-linejoin="round"
       stroke-linecap="round"
@@ -32,8 +32,8 @@ withDefaults(defineProps<{ size?: number }>(), { size: 40 })
     <!-- Llave: cruza el engrane, en naranja de marca -->
     <path
       d="M30.5 17.5a5 5 0 0 1-6.6 6.6L15 33l-2.2-2.2 8.9-8.9a5 5 0 0 1 6.6-6.6l-3 3 2.2 2.2 3-3z"
-      fill="var(--orange)"
-      stroke="var(--orange)"
+      fill="var(--blue)"
+      stroke="var(--blue)"
       stroke-width="1"
       stroke-linejoin="round"
     />

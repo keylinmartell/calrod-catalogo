@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useAdminParts, toPartInput } from '@/composables/useAdminParts'
+import { useParts } from '@/composables/useParts'
 import {
   AVAILABILITY_LABELS,
-  CATEGORIES,
   ORIGIN_LABELS,
 } from '@/types/part'
 import type {
   Availability,
+  Category,
   CompatInput,
   OriginType,
   Part,
@@ -19,8 +20,19 @@ const props = defineProps<{ part: Part | null }>()
 const emit = defineEmits<{ saved: []; cancel: [] }>()
 
 const { createPart, updatePart, uploadImage } = useAdminParts()
+const { fetchCategories } = useParts()
 
 const isEdit = props.part !== null
+
+// Categorías para el select (cargadas de la BD, ya no hardcodeadas).
+const categories = ref<Category[]>([])
+onMounted(async () => {
+  try {
+    categories.value = await fetchCategories()
+  } catch (e) {
+    console.error('[CalRod] PartForm fetchCategories:', e)
+  }
+})
 
 // Estado del formulario. En edición partimos de la pieza; en alta, de vacíos.
 const form = reactive<PartInput>(
@@ -29,7 +41,7 @@ const form = reactive<PartInput>(
     : {
         code: '',
         name: '',
-        category: 'frenos',
+        category_id: null,
         brand: '',
         origin_type: 'original',
         price: 0,
@@ -174,9 +186,10 @@ async function onSubmit() {
         </label>
         <label class="field">
           <span class="field__label">Categoría</span>
-          <select v-model="form.category" class="field__input">
-            <option v-for="c in CATEGORIES" :key="c.value" :value="c.value">
-              {{ c.label }}
+          <select v-model="form.category_id" class="field__input">
+            <option :value="null">— Sin categoría —</option>
+            <option v-for="c in categories" :key="c.id" :value="c.id">
+              {{ c.name }}
             </option>
           </select>
         </label>
@@ -334,7 +347,7 @@ async function onSubmit() {
 }
 
 .form__back {
-  color: var(--orange-2);
+  color: var(--blue-2);
   font-weight: 500;
   font-size: 0.9rem;
 }
@@ -358,7 +371,7 @@ async function onSubmit() {
   font-family: var(--font-display);
   font-size: 0.95rem;
   font-weight: 700;
-  color: var(--orange-2);
+  color: var(--blue-2);
   padding: 0 var(--space-2);
 }
 
@@ -403,7 +416,7 @@ async function onSubmit() {
 }
 
 .field__input:focus {
-  border-color: var(--orange);
+  border-color: var(--blue);
 }
 
 .field__input::placeholder {
@@ -465,7 +478,7 @@ select.field__input {
 
 .photo__hint code {
   font-family: var(--font-mono);
-  color: var(--orange-2);
+  color: var(--blue-2);
 }
 
 /* Filas dinámicas */
@@ -523,12 +536,12 @@ select.field__input {
 }
 
 .btn--primary {
-  background: var(--orange);
-  color: #1a1206;
+  background: var(--blue);
+  color: #eceef2;
 }
 
 .btn--primary:hover:not(:disabled) {
-  background: var(--orange-2);
+  background: var(--blue-2);
 }
 
 .btn--ghost {
@@ -539,7 +552,7 @@ select.field__input {
 }
 
 .btn--ghost:hover {
-  border-color: var(--orange);
+  border-color: var(--blue);
 }
 
 .btn:disabled {

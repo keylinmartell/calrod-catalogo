@@ -1,19 +1,22 @@
 import { defineStore } from 'pinia'
 import { useParts } from '@/composables/useParts'
-import type { Part, PartCategory } from '@/types/part'
+import { useStoreSettings } from '@/composables/useStoreSettings'
+import type { Category, Part, StoreSettings } from '@/types/part'
 
 interface CatalogState {
   parts: Part[]
+  categories: Category[]
   loading: boolean
   error: string | null
   search: string
-  activeCategories: PartCategory[]
+  activeCategories: string[]
   stats: {
     activeParts: number
     brandsCovered: number
     availabilityPct: number
   } | null
   statsLoading: boolean
+  storeSettings: StoreSettings | null
 }
 
 let searchTimer: ReturnType<typeof setTimeout> | null = null
@@ -21,12 +24,14 @@ let searchTimer: ReturnType<typeof setTimeout> | null = null
 export const useCatalogStore = defineStore('catalog', {
   state: (): CatalogState => ({
     parts: [],
+    categories: [],
     loading: false,
     error: null,
     search: '',
     activeCategories: [],
     stats: null,
     statsLoading: false,
+    storeSettings: null,
   }),
 
   getters: {
@@ -55,6 +60,17 @@ export const useCatalogStore = defineStore('catalog', {
       }
     },
 
+    /** Carga las categorías desde la BD (para los chips de filtro dinámicos). */
+    async loadCategories() {
+      const { fetchCategories } = useParts()
+      try {
+        this.categories = await fetchCategories()
+      } catch (e) {
+        this.categories = []
+        console.error('[CalRod] loadCategories:', e)
+      }
+    },
+
     /** Búsqueda con debounce ~300ms (§6): consulta Supabase, no filtra en el navegador. */
     setSearch(value: string) {
       this.search = value
@@ -64,9 +80,9 @@ export const useCatalogStore = defineStore('catalog', {
       }, 300)
     },
 
-    toggleCategory(cat: PartCategory) {
-      const i = this.activeCategories.indexOf(cat)
-      if (i === -1) this.activeCategories.push(cat)
+    toggleCategory(catId: string) {
+      const i = this.activeCategories.indexOf(catId)
+      if (i === -1) this.activeCategories.push(catId)
       else this.activeCategories.splice(i, 1)
       this.loadParts()
     },
@@ -87,6 +103,17 @@ export const useCatalogStore = defineStore('catalog', {
         console.error('[CalRod] loadStats:', e)
       } finally {
         this.statsLoading = false
+      }
+    },
+
+    /** Ubicación de la tienda para el mapa del catálogo (store_settings, 0007). */
+    async loadStoreSettings() {
+      const { fetchStoreSettings } = useStoreSettings()
+      try {
+        this.storeSettings = await fetchStoreSettings()
+      } catch (e) {
+        this.storeSettings = null
+        console.error('[CalRod] loadStoreSettings:', e)
       }
     },
   },

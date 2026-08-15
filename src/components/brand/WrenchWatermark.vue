@@ -16,7 +16,7 @@
     aria-hidden="true"
     xmlns="http://www.w3.org/2000/svg"
   >
-    <g stroke="var(--cream)">
+    <g stroke="var(--silver)">
       <!-- Dientes: anillo grueso punteado (zigzag). -->
       <circle
         cx="100"

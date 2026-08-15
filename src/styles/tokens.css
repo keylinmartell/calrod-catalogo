@@ -1,29 +1,40 @@
 /*
- * CalRod — design tokens (sección 5 del brief)
- * Modo oscuro por defecto: es el único tema de la Fase 1.
+ * CalRod — design tokens
+ * Paleta profesional: negro frío + azul navy + acentos metálicos (logo nuevo).
  */
 :root {
-  /* Color */
-  --bg: #15130f; /* carbón cálido, no negro puro */
-  --surface: #1c1913; /* tarjetas y paneles */
-  --surface-2: #242019; /* superficies elevadas / hover */
-  --orange: #e2762a; /* acento de marca: CTA, precios, badges */
-  --orange-2: #f08c3f; /* variante clara para texto sobre oscuro */
-  --orange-dim: rgba(226, 118, 42, 0.14); /* relleno tenue: chips, eyebrow, íconos */
-  --cream: #f2eedf; /* texto principal */
-  --charcoal: #8c877c; /* trazo del engrane */
-  /* Texto en dos niveles (diseño v3): secundario y terciario/apagado. */
-  --text-dim: #a69f8e; /* texto secundario: leads, meta */
-  --text-faint: #6b6558; /* texto terciario: sku, placeholders, sellos */
+  /* Color — fondos */
+  --bg: #08090c;
+  --surface: #111318;
+  --surface-2: #181b22;
+
+  /* Acento de marca: azul navy apagado (menos saturado, tono OEM) */
+  --blue: #1a3d6e;
+  --blue-2: #4a7bb8;
+  --blue-dim: rgba(26, 61, 110, 0.08);
+
+  /* Metálicos del logo */
+  --silver: #b8bec8;
+  --chrome: #8b939e;
+  --cream: #eceef2;
+  --charcoal: #8b939e;
+
+  /* Texto en dos niveles */
+  --text-dim: #9ba3b0;
+  --text-faint: #5a6270;
 
   /* Derivados de estado */
-  --ok: #6bbf7b;
-  --warn: #f0b73f;
-  --danger: #d95c4a;
+  --ok: #5c9e73;
+  --warn: #fbbf24;
+  --danger: #f87171;
 
   /* Bordes y líneas */
-  --border: rgba(242, 238, 223, 0.08);
-  --border-strong: rgba(242, 238, 223, 0.16);
+  --border: rgba(236, 238, 242, 0.08);
+  --border-strong: rgba(236, 238, 242, 0.14);
+
+  /* Superficies "glass" (header/barra sticky, overlays translúcidos sobre el fondo). */
+  --surface-glass: rgba(8, 9, 12, 0.85);
+  --overlay: rgba(8, 9, 12, 0.72);
 
   /* Tipografía */
   --font-display: 'Sora', system-ui, sans-serif;
@@ -36,8 +47,8 @@
   --radius-lg: 18px;
 
   /* Sombras */
-  --shadow-card: 0 1px 0 rgba(242, 238, 223, 0.04),
-    0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-card: 0 1px 0 rgba(236, 238, 242, 0.04),
+    0 8px 24px rgba(0, 0, 0, 0.4);
 
   /* Espaciado base */
   --space-1: 4px;
@@ -52,4 +63,46 @@
   /* Layout */
   --container: 1200px;
   --header-h: 68px;
+}
+
+/*
+ * Modo claro — se activa con data-theme="light" en <html> (lo pone useTheme).
+ * El oscuro es el default (:root de arriba), así la web arranca siempre oscura.
+ * Solo redefinimos color; espaciado/tipografía/radios se heredan.
+ */
+:root[data-theme='light'] {
+  /* Fondos: gris muy claro, superficies en blanco escalonado. */
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-2: #eceef2;
+
+  /* Acento: azul un poco más profundo para contraste sobre blanco. */
+  --blue: #1a3d6e;
+  --blue-2: #2d5c96;
+  --blue-dim: rgba(26, 61, 110, 0.06);
+
+  /* Metálicos / neutros invertidos. */
+  --silver: #5a6270;
+  --chrome: #6b7280;
+  --cream: #14171d; /* "cream" pasa a ser el texto oscuro principal */
+  --charcoal: #5a6270; /* texto secundario */
+
+  --text-dim: #4b515c;
+  --text-faint: #8b939e;
+
+  /* Estados: mismos tonos, funcionan en claro. */
+  --ok: #2f8f57;
+  --warn: #b7791f;
+  --danger: #d64545;
+
+  /* Bordes: ahora oscuros y translúcidos sobre fondo claro. */
+  --border: rgba(20, 23, 29, 0.1);
+  --border-strong: rgba(20, 23, 29, 0.18);
+
+  /* Glass/overlay claros. */
+  --surface-glass: rgba(255, 255, 255, 0.85);
+  --overlay: rgba(20, 23, 29, 0.45);
+
+  --shadow-card: 0 1px 2px rgba(20, 23, 29, 0.06),
+    0 8px 24px rgba(20, 23, 29, 0.1);
 }

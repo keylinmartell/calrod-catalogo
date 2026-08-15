@@ -2,7 +2,11 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
+import { useTheme } from './composables/useTheme'
 import './styles/base.css'
+
+// Aplica el tema guardado (o el oscuro por defecto) antes de montar.
+useTheme().initTheme()
 
 const app = createApp(App)
 

@@ -2,12 +2,24 @@
   <footer class="footer">
     <div class="container footer__inner">
       <div class="footer__brand">
-        <img class="footer__logo" src="/logo.png" alt="Respuestos CalRod" />
+        <img class="footer__logo" src="/logo-new.png" alt="Repuestos CalRod" />
       </div>
       <p class="footer__note">
-        Respuestos CalRod — catálogo de piezas de auto.
+        Repuestos CalRod — catálogo de piezas de auto.
       </p>
-      <p class="footer__legal mono">© {{ new Date().getFullYear() }} CalRod</p>
+      <p class="footer__legal mono">
+        © {{ new Date().getFullYear() }} CalRod
+        <span class="footer__sep" aria-hidden="true">·</span>
+        Desarrollado por
+        <a
+          class="footer__dev"
+          href="https://wa.me/5359324394"
+          target="_blank"
+          rel="noopener"
+        >
+          KMartell
+        </a>
+      </p>
     </div>
   </footer>
 </template>
@@ -29,14 +41,21 @@
 .footer__brand {
   display: flex;
   align-items: center;
+  overflow: visible;
 }
 
+/* Logo más grande; márgenes negativos no alteran el padding del footer. */
 .footer__logo {
-  height: 250px;
+  height: 220px;
   width: auto;
-  margin-top: -75px;
-  margin-bottom: -75px;
-  margin-left: -24px;
+  margin-block: -72px;
+}
+
+@media (max-width: 520px) {
+  .footer__logo {
+    height: 190px;
+    margin-block: -60px;
+  }
 }
 
 .footer__note {
@@ -48,5 +67,20 @@
 .footer__legal {
   color: var(--charcoal);
   font-size: 0.8rem;
+}
+
+.footer__sep {
+  margin-inline: var(--space-2);
+  color: var(--border-strong);
+}
+
+.footer__dev {
+  color: var(--blue-2);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.footer__dev:hover {
+  text-decoration: underline;
 }
 </style>

@@ -1,10 +1,14 @@
 import { supabase } from '@/services/supabase'
-import type { Part, PartCategory } from '@/types/part'
+import type { Category, Part } from '@/types/part'
 
 export interface PartQueryOptions {
   search?: string
-  categories?: PartCategory[]
+  /** Ids de categoría a filtrar (parts.category_id). */
+  categories?: string[]
 }
+
+// Traemos la categoría embebida en cada pieza vía el FK category_id.
+const PART_SELECT = '*, categories(*), part_specs(*), part_compatibility(*)'
 
 /**
  * useParts — capa de consulta a Supabase (ya no lee JSON local).
@@ -15,7 +19,7 @@ export function useParts() {
   async function fetchParts(opts: PartQueryOptions = {}): Promise<Part[]> {
     let query = supabase
       .from('parts')
-      .select('*, part_specs(*), part_compatibility(*)')
+      .select(PART_SELECT)
       .order('created_at', { ascending: false })
 
     const search = opts.search?.trim()
@@ -24,7 +28,7 @@ export function useParts() {
     }
 
     if (opts.categories && opts.categories.length > 0) {
-      query = query.in('category', opts.categories)
+      query = query.in('category_id', opts.categories)
     }
 
     const { data, error } = await query
@@ -35,12 +39,22 @@ export function useParts() {
   async function fetchPartById(id: string): Promise<Part | null> {
     const { data, error } = await supabase
       .from('parts')
-      .select('*, part_specs(*), part_compatibility(*)')
+      .select(PART_SELECT)
       .eq('id', id)
       .maybeSingle()
 
     if (error) throw error
     return (data as Part) ?? null
+  }
+
+  /** Lista de categorías (para filtros del catálogo y selects del panel). */
+  async function fetchCategories(): Promise<Category[]> {
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .order('name', { ascending: true })
+    if (error) throw error
+    return (data ?? []) as Category[]
   }
 
   /** Números del panel "CalRod al día" — vienen de la BD, no hardcodeados (§6). */
@@ -77,5 +91,5 @@ export function useParts() {
     return { activeParts, brandsCovered, availabilityPct }
   }
 
-  return { fetchParts, fetchPartById, fetchStats }
+  return { fetchParts, fetchPartById, fetchCategories, fetchStats }
 }

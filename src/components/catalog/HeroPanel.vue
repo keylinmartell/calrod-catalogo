@@ -22,7 +22,10 @@ const availDisplay = computed(() => props.loading ? '—' : `${props.availabilit
 
     <div class="status-header">
       <span class="pulse"></span>
-      <span>CALROD · ESTADO EN VIVO</span>
+      <!-- "ESTADO EN VIVO" queda comentado: en su lugar el catálogo muestra la
+           ubicación de la tienda (MapPanel al pie de CatalogView). -->
+      <!-- <span>CALROD · ESTADO EN VIVO</span> -->
+      <span>CALROD · AL DÍA</span>
     </div>
 
     <div class="status-metrics">
@@ -63,7 +66,7 @@ const availDisplay = computed(() => props.loading ? '—' : `${props.availabilit
   position: absolute;
   width: 14px;
   height: 14px;
-  border: 1.5px solid rgba(240, 140, 63, 0.55);
+  border: 1.5px solid rgba(74, 123, 184, 0.35);
 }
 .corner.tl { top: 10px; left: 10px; border-right: none; border-bottom: none; }
 .corner.tr { top: 10px; right: 10px; border-left: none; border-bottom: none; }
@@ -128,7 +131,7 @@ const availDisplay = computed(() => props.loading ? '—' : `${props.availabilit
   color: var(--cream);
   font-variant-numeric: tabular-nums;
 }
-.metric-value.accent { color: var(--orange-2); }
+.metric-value.accent { color: var(--blue-2); }
 
 /* Unica barra de progreso: solo donde el numero es un porcentaje, no decoracion repetida */
 .metric-bar {
@@ -140,7 +143,7 @@ const availDisplay = computed(() => props.loading ? '—' : `${props.availabilit
 }
 .metric-bar-fill {
   height: 100%;
-  background: var(--orange-2);
+  background: var(--blue-2);
   border-radius: 2px;
   transition: width 0.8s cubic-bezier(.2,.8,.2,1);
 }

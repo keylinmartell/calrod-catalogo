@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { useAuthStore } from '@/stores/authStore'
 import AdminAuth from '@/components/admin/AdminAuth.vue'
 import AdminDashboard from '@/components/admin/AdminDashboard.vue'
+import GearSpinner from '@/components/brand/GearSpinner.vue'
 
 const auth = useAuthStore()
 const { ready, isAdmin, isAuthenticated } = storeToRefs(auth)
@@ -18,7 +19,7 @@ onMounted(() => {
   <div class="admin container">
     <!-- Mientras init resuelve la sesión, evitamos el parpadeo login → panel. -->
     <div v-if="!ready" class="admin__state">
-      <div class="spinner" aria-hidden="true"></div>
+      <GearSpinner :size="44" />
       <p>Cargando…</p>
     </div>
 
@@ -66,15 +67,6 @@ onMounted(() => {
   color: var(--cream);
 }
 
-.spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid var(--surface-2);
-  border-top-color: var(--orange);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
 .btn {
   display: inline-flex;
   align-items: center;
@@ -91,12 +83,6 @@ onMounted(() => {
 }
 
 .btn--ghost:hover {
-  border-color: var(--orange);
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+  border-color: var(--blue);
 }
 </style>
