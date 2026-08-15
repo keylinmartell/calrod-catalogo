@@ -2,7 +2,7 @@
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useCatalogStore } from '@/stores/catalogStore'
-import WrenchWatermark from '@/components/brand/WrenchWatermark.vue'
+import TireWatermark from '@/components/brand/TireWatermark.vue'
 import GearSpinner from '@/components/brand/GearSpinner.vue'
 import MapPanel from '@/components/catalog/MapPanel.vue'
 import FilterBar from '@/components/catalog/FilterBar.vue'
@@ -61,7 +61,7 @@ onBeforeUnmount(() => {
 <template>
   <!-- Hero -->
   <section class="hero">
-    <WrenchWatermark />
+    <TireWatermark />
     <div class="container hero__inner">
       <div class="hero__copy">
         <h1 class="hero__title">
