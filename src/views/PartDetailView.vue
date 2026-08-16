@@ -136,7 +136,11 @@ watch(
           </div>
 
           <div class="price-row">
-            <span class="sheet__price mono">{{ priceFmt }}</span>
+            <div class="price-box">
+              <span v-if="offer" class="price-was mono">{{ offer.originalFmt }}</span>
+              <span class="sheet__price mono">{{ offer ? offer.finalFmt : priceFmt }}</span>
+              <span v-if="offer" class="price-save">Ahorras {{ offer.saveFmt }}</span>
+            </div>
             <span class="availability" :class="availabilityDotClass">
               <span class="dot"></span>
               {{ AVAILABILITY_LABELS[part.availability] }}
@@ -195,6 +199,7 @@ watch(
   overflow: hidden;
   border: 1px solid var(--border);
   background: var(--surface-2);
+  padding: var(--space-6);
 }
 .corner { position: absolute; width: 16px; height: 16px; border: 1.5px solid rgba(46,111,224,0.55); z-index: 2; }
 .corner.tl { top: 10px; left: 10px; border-right: none; border-bottom: none; }
@@ -202,11 +207,15 @@ watch(
 .corner.bl { bottom: 10px; left: 10px; border-right: none; border-top: none; }
 .corner.br { bottom: 10px; right: 10px; border-left: none; border-top: none; }
 
+/* Igual que PartCard: caja cuadrada + object-fit contain para que la pieza se
+   vea completa (nunca recortada), "flotando" con una sombra suave. */
 .sheet__img {
   width: 100%;
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  object-position: center;
   display: block;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35));
 }
 .sheet__img--empty {
   display: flex;
@@ -273,10 +282,26 @@ watch(
   padding-top: var(--space-4);
   border-top: 1px dashed var(--border);
 }
+.price-box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.price-was {
+  font-size: 0.9rem;
+  color: var(--charcoal);
+  text-decoration: line-through;
+}
 .sheet__price {
   font-size: 1.7rem;
   font-weight: 700;
   color: var(--blue-2);
+  line-height: 1.1;
+}
+.price-save {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--orange-2);
 }
 
 .availability {
