@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useParts } from '@/composables/useParts'
+import { useAppLoading } from '@/composables/useAppLoading'
 import type { Part } from '@/types/part'
 import { AVAILABILITY_LABELS, ORIGIN_LABELS } from '@/types/part'
 import PartSpecSheet from '@/components/part-detail/PartSpecSheet.vue'
@@ -11,6 +12,7 @@ import GearSpinner from '@/components/brand/GearSpinner.vue'
 const route = useRoute()
 const router = useRouter()
 const { fetchPartById } = useParts()
+const { finishBoot } = useAppLoading()
 
 const part = ref<Part | null>(null)
 const loading = ref(true)
@@ -46,6 +48,9 @@ async function load(id: string) {
     console.error('[CalRod] PartDetail:', e)
   } finally {
     loading.value = false
+    // Quita el overlay de arranque global cuando la ficha resuelve su endpoint
+    // (éxito, error o redirección a 404). Es idempotente tras el primer arranque.
+    finishBoot()
   }
 }
 

@@ -7,11 +7,31 @@
  * Es una animación de ENTRADA (corre una sola vez, `forwards`): no hace loop ni
  * desaparece. Los colores de los degradados salen de variables CSS para poder
  * retunearlos en modo claro (ver bloque html[data-theme='light']).
+ *
+ * IMPORTANTE: la animación NO arranca hasta que el overlay de carga global
+ * (useAppLoading) desaparece. Así la rueda "entra rodando" cuando el usuario ya
+ * está viendo el hero, no escondida detrás del "Cargando la página…".
  */
+import { ref, watch } from 'vue'
+import { useAppLoading } from '@/composables/useAppLoading'
+
+const { booting } = useAppLoading()
+
+// `play` activa las clases de animación. Si ya se terminó de cargar cuando este
+// componente se monta, arranca de una vez; si no, espera a que booting → false.
+const play = ref(!booting.value)
+if (!play.value) {
+  const stop = watch(booting, (b) => {
+    if (!b) {
+      play.value = true
+      stop()
+    }
+  })
+}
 </script>
 
 <template>
-  <div class="tire-watermark" aria-hidden="true">
+  <div class="tire-watermark" :class="{ 'is-playing': play }" aria-hidden="true">
     <div class="tire-travel">
       <div class="tire-bounce">
         <svg class="tire-rotate" viewBox="0 0 200 200">
@@ -95,6 +115,13 @@
   left: clamp(-40px, 4vw, 96px);
   width: clamp(300px, 36vw, 470px);
   height: clamp(300px, 36vw, 470px);
+  /* Estado previo a la animación: fuera de pantalla e invisible, igual que el
+     frame 0% de tire-travel. Así no hay "parpadeo" mientras esperamos la carga. */
+  transform: translateX(92vw);
+  opacity: 0;
+}
+/* La animación solo corre cuando la carga global terminó (is-playing). */
+.is-playing .tire-travel {
   animation: tire-travel 3.4s cubic-bezier(.22,.61,.28,1) forwards;
 }
 
@@ -109,6 +136,8 @@
   width: 100%;
   height: 100%;
   transform-origin: 50% 100%;
+}
+.is-playing .tire-bounce {
   animation: tire-bounce 3.4s linear forwards;
 }
 
@@ -129,8 +158,10 @@
   width: 100%;
   height: 100%;
   transform-origin: 50% 50%;
-  animation: tire-rotate 3.4s cubic-bezier(.22,.61,.28,1) forwards;
   filter: drop-shadow(0 6px 10px rgba(0,0,0,0.4));
+}
+.is-playing .tire-rotate {
+  animation: tire-rotate 3.4s cubic-bezier(.22,.61,.28,1) forwards;
 }
 
 @keyframes tire-rotate {
@@ -144,6 +175,11 @@
   .tire-bounce,
   .tire-rotate {
     animation: none;
+  }
+  /* Anula el estado "fuera de pantalla" (frame 0%) para que se vea en reposo. */
+  .tire-travel {
+    transform: none;
+    opacity: 1;
   }
 }
 

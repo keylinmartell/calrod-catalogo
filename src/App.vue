@@ -4,6 +4,7 @@ import { RouterView, useRoute } from 'vue-router'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import AppFooter from '@/components/layout/AppFooter.vue'
 import CategoryBar from '@/components/catalog/CategoryBar.vue'
+import AppLoader from '@/components/brand/AppLoader.vue'
 
 const route = useRoute()
 // La barra de categorías/sistemas solo tiene sentido en el catálogo.
@@ -12,6 +13,7 @@ const showCategoryBar = computed(() => route.name === 'catalog')
 
 <template>
   <a href="#main" class="skip-link">Saltar al contenido</a>
+  <AppLoader />
   <div class="app-shell">
     <AppHeader />
     <CategoryBar v-if="showCategoryBar" />

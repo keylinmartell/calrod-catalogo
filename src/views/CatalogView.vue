@@ -2,6 +2,7 @@
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useCatalogStore } from '@/stores/catalogStore'
+import { useAppLoading } from '@/composables/useAppLoading'
 import TireWatermark from '@/components/brand/TireWatermark.vue'
 import GearSpinner from '@/components/brand/GearSpinner.vue'
 import MapPanel from '@/components/catalog/MapPanel.vue'
@@ -11,6 +12,7 @@ import PartGrid from '@/components/catalog/PartGrid.vue'
 const store = useCatalogStore()
 const { parts, loading, error, resultCount, isEmpty, storeSettings } =
   storeToRefs(store)
+const { finishBoot } = useAppLoading()
 
 // Dialog de ubicación (solo se usa en móvil; el mapa inline se oculta ahí).
 const showMapDialog = ref(false)
@@ -42,12 +44,17 @@ watch(showMapDialog, (open) => {
   else window.removeEventListener('keydown', onKeydown)
 })
 
-onMounted(() => {
+onMounted(async () => {
   syncMobile(mq)
   mq.addEventListener('change', syncMobile)
-  store.loadParts()
-  store.loadCategories()
-  store.loadStoreSettings()
+  // Esperamos a que TODOS los endpoints de arranque respondan antes de quitar
+  // el overlay de carga global (useAppLoading): piezas, categorías y ubicación.
+  await Promise.allSettled([
+    store.loadParts(),
+    store.loadCategories(),
+    store.loadStoreSettings(),
+  ])
+  finishBoot()
 })
 
 // Limpieza por si el componente se destruye con el dialog abierto.
@@ -65,12 +72,12 @@ onBeforeUnmount(() => {
     <div class="container hero__inner">
       <div class="hero__copy">
         <h1 class="hero__title">
-          Encuentra la pieza exacta para tu auto,
+          Encuentre la pieza exacta para su auto,
           <span class="hero__title-grad">sin adivinar.</span>
         </h1>
         <p class="hero__lead">
-          Busca por nombre o número de parte y filtra por categoría. Cada pieza
-          muestra compatibilidad real por marca, modelo y años.
+          Busque por nombre o número de parte y filtre por categoría. Cada pieza
+          muestra compatibilidad real por marca y modelo.
         </p>
         <!-- Un solo botón: en escritorio explora el catálogo; en móvil abre la
              ubicación en un dialog. El icono cambia con el modo. -->

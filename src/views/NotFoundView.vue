@@ -1,5 +1,11 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
+import { useAppLoading } from '@/composables/useAppLoading'
+
+// Si se aterriza directo en una URL inexistente, la 404 no tiene endpoints:
+// quita el overlay de arranque en cuanto se monta.
+onMounted(() => useAppLoading().finishBoot())
 </script>
 
 <template>

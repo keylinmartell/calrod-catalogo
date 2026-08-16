@@ -5,13 +5,16 @@ import { useAuthStore } from '@/stores/authStore'
 import AdminAuth from '@/components/admin/AdminAuth.vue'
 import AdminDashboard from '@/components/admin/AdminDashboard.vue'
 import GearSpinner from '@/components/brand/GearSpinner.vue'
+import { useAppLoading } from '@/composables/useAppLoading'
 
 const auth = useAuthStore()
 const { ready, isAdmin, isAuthenticated } = storeToRefs(auth)
+const { finishBoot } = useAppLoading()
 
-onMounted(() => {
+onMounted(async () => {
   // init lee la sesión guardada y se suscribe a los cambios de auth.
-  auth.init()
+  await auth.init()
+  finishBoot()
 })
 </script>
 
