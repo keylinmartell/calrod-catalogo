@@ -6,40 +6,67 @@ import { AVAILABILITY_LABELS, ORIGIN_LABELS } from '@/types/part'
 
 const props = defineProps<{ part: Part }>()
 
-const priceFmt = computed(() =>
-  new Intl.NumberFormat('es-MX', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(props.part.price),
-)
-
-// Solo mostramos badge para original / alternativa (§5).
-const badge = computed(() => {
-  if (props.part.origin_type === 'original') return ORIGIN_LABELS.original
-  if (props.part.origin_type === 'alternativa') return ORIGIN_LABELS.alternativa
-  return null
+// `price` es el precio NORMAL. Si hay discount_amount válido (>0 y < price),
+// el precio final es `price - discount_amount` y el original tachado es `price`.
+const offer = computed(() => {
+  const save = props.part.discount_amount
+  if (!save || save <= 0) return null
+  const original = props.part.price
+  const final = original - save
+  if (final <= 0) return null
+  return {
+    final,
+    original,
+    save,
+  }
 })
 
-const stockClass = computed(() => `dot--${props.part.availability}`)
+// Partimos el precio en entero + centavos para el formato tipo anuncio
+// ($ chico arriba — dólares grandes — centavos chicos arriba).
+function splitPrice(value: number) {
+  const [int, cents = '00'] = value.toFixed(2).split('.')
+  return { int, cents }
+}
 
-// Resumen de compatibilidad: "Marca Modelo (años)" por cada fila registrada.
-const compatItems = computed(() =>
-  (props.part.part_compatibility ?? []).map((c) => {
-    const years =
-      c.year_from === c.year_to ? `${c.year_from}` : `${c.year_from}–${c.year_to}`
-    return { id: c.id, label: `${c.vehicle_brand} ${c.vehicle_model}`, years }
-  }),
+// Precio grande: si hay oferta, mostramos el FINAL; si no, el precio normal.
+const priceParts = computed(() =>
+  splitPrice(offer.value ? offer.value.final : props.part.price),
+)
+const originalPriceFmt = computed(() =>
+  offer.value
+    ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'USD' }).format(
+        offer.value.original,
+      )
+    : '',
+)
+const saveFmt = computed(() =>
+  offer.value
+    ? new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'USD' }).format(
+        offer.value.save,
+      )
+    : '',
 )
 
-// Mostramos hasta 3 en la card; el resto se resume en un contador.
-const MAX_COMPAT = 3
-const visibleCompat = computed(() => compatItems.value.slice(0, MAX_COMPAT))
-const extraCompat = computed(() => Math.max(0, compatItems.value.length - MAX_COMPAT))
+// Línea única de metadatos al pie: "Disponible · Original" en vez de badges.
+const footLine = computed(() => {
+  const bits = [AVAILABILITY_LABELS[props.part.availability]]
+  if (props.part.origin_type === 'original' || props.part.origin_type === 'alternativa') {
+    bits.push(ORIGIN_LABELS[props.part.origin_type])
+  }
+  return bits.join(' · ')
+})
+
+const ribbon = computed(() => {
+  if (props.part.is_best_deal) return 'MEJOR OFERTA'
+  if (props.part.availability === 'stock_bajo') return 'ÚLTIMAS PIEZAS'
+  return null
+})
 </script>
 
 <template>
   <RouterLink :to="`/pieza/${part.id}`" class="card">
-    <div class="card__media">
+    <!-- Franja de foto: estudio propio, con aire y sombra de producto flotando -->
+    <div class="card__photo">
       <img
         v-if="part.image_url"
         :src="part.image_url"
@@ -50,61 +77,32 @@ const extraCompat = computed(() => Math.max(0, compatItems.value.length - MAX_CO
       <div v-else class="card__img card__img--empty" aria-hidden="true">
         <span class="mono">Sin imagen</span>
       </div>
-      <span
-        v-if="badge"
-        class="badge"
-        :class="{ 'badge--alt': part.origin_type === 'alternativa' }"
-      >
-        {{ badge }}
+
+      <span v-if="offer" class="save-sticker">
+        <span>AHORRA<br />{{ saveFmt }}</span>
       </span>
 
-      <span class="stock-tag" :class="`stock-tag--${part.availability}`">
-        <span class="dot" :class="stockClass" aria-hidden="true"></span>
-        <span class="stock-tag__label">{{ AVAILABILITY_LABELS[part.availability] }}</span>
+      <span v-if="ribbon" class="ribbon" :class="{ 'ribbon--deal': part.is_best_deal }">
+        <span class="ribbon__text">{{ ribbon }}</span>
       </span>
     </div>
 
+    <!-- Cuerpo tipo volante -->
     <div class="card__body">
-      <div class="card__head">
-        <h3 class="card__name">{{ part.name }}</h3>
-        <span class="card__details">
-          <svg
-            class="card__tap-icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M9 11V6a2 2 0 0 1 4 0v6" />
-            <path d="M13 8a2 2 0 0 1 4 0v5" />
-            <path d="M17 9a2 2 0 0 1 4 0v6a6 6 0 0 1-6 6h-2a6 6 0 0 1-5.2-3l-2.3-4a2 2 0 0 1 3.4-2.1L9 13" />
-          </svg>
-          Ver detalles
-        </span>
+      <h3 class="card__name">{{ part.name }}</h3>
+      <p class="card__sub mono">{{ part.brand }} · {{ part.code }}</p>
+
+      <!-- Precio estilo anuncio: $ chico, entero grande, centavos chicos -->
+      <div class="price">
+        <span v-if="offer" class="price__was mono">{{ originalPriceFmt }}</span>
+        <div class="price__now">
+          <span class="price__symbol">$</span>
+          <span class="price__int">{{ priceParts.int }}</span>
+          <span class="price__cents">{{ priceParts.cents }}</span>
+        </div>
       </div>
 
-      <div v-if="compatItems.length" class="card__compat">
-        <span class="card__compat-title">Compatibilidad</span>
-        <ul class="card__compat-list">
-          <li v-for="c in visibleCompat" :key="c.id" class="card__compat-item">
-            <span class="card__compat-model">{{ c.label }}</span>
-            <span class="card__compat-years mono">{{ c.years }}</span>
-          </li>
-        </ul>
-        <span v-if="extraCompat" class="card__compat-more">
-          +{{ extraCompat }} vehículo{{ extraCompat > 1 ? 's' : '' }} más
-        </span>
-      </div>
-
-      <div class="card__meta">
-        <span class="card__price mono">{{ priceFmt }}</span>
-        <span class="card__sku mono">{{ part.code }}</span>
-      </div>
-
-      <!-- Fase 2: aquí entra el botón "Agregar al carrito" (slot reservado). -->
+      <p class="card__foot mono">{{ footLine }}</p>
     </div>
   </RouterLink>
 </template>
@@ -114,354 +112,193 @@ const extraCompat = computed(() => Math.max(0, compatItems.value.length - MAX_CO
   display: flex;
   flex-direction: column;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border: 1px solid transparent;
+  border-radius: var(--radius);
   overflow: hidden;
-  transition: transform 0.15s ease, border-color 0.15s ease;
+  transition: border-color 0.15s ease;
 }
 
 .card:hover {
-  transform: translateY(-3px);
-  border-color: var(--border-strong);
-  background: var(--surface-2);
+  border-color: var(--border);
 }
 
-.card__media {
+/* ── Franja de foto: "estudio", con más aire que el resto de la card ────── */
+.card__photo {
   position: relative;
-  aspect-ratio: 4 / 3;
+  /* Caja cuadrada: encuadra bien piezas redondas (discos, etc.) sin que queden
+     pegadas a un lado como pasaba con la caja apaisada 4/3. object-fit: contain
+     nunca recorta la imagen; esto solo le da proporción con más alto. */
+  aspect-ratio: 1 / 1;
   background: var(--surface-2);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: var(--space-5);
 }
 
 .card__img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
+  display: block;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35));
 }
 
 .card__img--empty {
-  display: grid;
-  place-items: center;
   color: var(--charcoal);
   font-size: 0.8rem;
 }
 
-.badge {
+/* ── Sticker de ahorro (estallido) ──────────────────────────────────────── */
+.save-sticker {
   position: absolute;
-  top: var(--space-3);
-  left: var(--space-3);
-  padding: 4px 10px;
-  border-radius: 999px;
+  top: 8px;
+  left: 8px;
+  width: 62px;
+  height: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: var(--orange);
+  color: #fff;
   font-family: var(--font-display);
-  font-size: 0.66rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1.05;
+  transform: rotate(-8deg);
+  clip-path: polygon(
+    50% 0%, 61% 15%, 79% 9%, 82% 28%, 100% 35%, 91% 52%,
+    100% 69%, 82% 74%, 79% 93%, 61% 87%, 50% 100%, 39% 87%,
+    21% 93%, 18% 74%, 0% 69%, 9% 52%, 0% 35%, 18% 28%,
+    21% 9%, 39% 15%
+  );
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+  z-index: 2;
+}
+
+/* ── Cinta de esquina diagonal ──────────────────────────────────────────── */
+.ribbon {
+  position: absolute;
+  top: 18px;
+  right: -46px;
+  width: 160px;
+  transform: rotate(45deg);
   background: var(--blue);
-  /* Va sobre azul oscuro en ambos temas → texto siempre claro (no usa --cream,
-     que en modo claro se vuelve oscuro). */
-  color: #eceef2;
+  text-align: center;
+  padding: 4px 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  z-index: 2;
+}
+.ribbon--deal { background: var(--orange); }
+.ribbon__text {
+  display: block;
+  color: #fff;
+  font-family: var(--font-display);
+  font-size: 0.5rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 
-.badge--alt {
-  /* Chip sobre la foto: fondo oscuro translúcido fijo + texto claro, legible
-     en ambos temas sin depender de la foto. */
-  background: rgba(8, 9, 12, 0.72);
-  color: #eceef2;
-  border: 1px solid rgba(236, 238, 242, 0.22);
-  backdrop-filter: blur(4px);
-}
-
+/* ── Cuerpo: producto primero, sin chrome de UI ─────────────────────────── */
 .card__body {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
   padding: var(--space-4);
 }
 
-.card__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-2);
-}
-
 .card__name {
-  font-size: 1rem;
-  font-weight: 600;
-  line-height: 1.3;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--cream);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  min-height: 2.6em;
 }
 
-.card__details {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-  font-family: var(--font-display);
-  font-size: 0.66rem;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--blue-2);
-  white-space: nowrap;
-}
-
-.card__tap-icon {
-  width: 15px;
-  height: 15px;
-  flex-shrink: 0;
-  transform-origin: 70% 70%;
-}
-
-/* Un toquecito animado para que se note que es tocable. */
-.card:hover .card__tap-icon {
-  animation: tap 0.6s ease infinite;
-}
-
-@keyframes tap {
-  0%,
-  100% {
-    transform: translateY(0) scale(1);
-  }
-  50% {
-    transform: translateY(2px) scale(0.9);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .card:hover .card__tap-icon {
-    animation: none;
-  }
-}
-
-/* Etiqueta de disponibilidad sobre la foto: esquina superior derecha en
-   escritorio; se reubica en móvil (§ ver media query). */
-.stock-tag {
-  position: absolute;
-  top: var(--space-3);
-  right: var(--space-3);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  /* Chip sobre foto: fondo oscuro fijo en ambos temas (la foto no cambia), así
-     los colores de estado se ven siempre. */
-  background: rgba(8, 9, 12, 0.72);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(236, 238, 242, 0.22);
-  color: #eceef2;
-}
-
-/* Colores de estado brillantes (independientes del tema) para contraste sobre
-   el chip oscuro. */
-.stock-tag--disponible {
-  color: #6bbf7b;
-}
-.stock-tag--stock_bajo {
-  color: #f0b73f;
-}
-.stock-tag--agotado {
-  color: #e07a6a;
-}
-
-.stock-tag__label {
-  line-height: 1;
-}
-
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.dot--disponible {
-  background: #6bbf7b;
-}
-.dot--stock_bajo {
-  background: #f0b73f;
-}
-.dot--agotado {
-  background: #e07a6a;
-}
-
-.card__compat {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-2);
-  background: var(--surface-2);
-  border-radius: var(--radius-sm);
-}
-
-.card__compat-title {
-  font-family: var(--font-display);
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--blue-2);
-}
-
-.card__compat-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.card__compat-item {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
-  font-size: 0.78rem;
-  color: var(--cream);
-}
-
-.card__compat-model {
+.card__sub {
+  margin-top: 4px;
+  font-size: 0.74rem;
+  color: var(--charcoal);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.card__compat-years {
-  color: var(--charcoal);
-  font-size: 0.72rem;
-  flex-shrink: 0;
+/* ── Precio tipo anuncio ─────────────────────────────────────────────────── */
+.price {
+  margin-top: var(--space-3);
 }
 
-.card__compat-more {
-  font-size: 0.7rem;
-  color: var(--charcoal);
-}
-
-.card__meta {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-2);
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--border);
-}
-
-.card__price {
-  font-size: 1.05rem;
-  font-weight: 600;
-  color: var(--blue-2);
-}
-
-  .card__sku {
+.price__was {
+  display: block;
   font-size: 0.78rem;
   color: var(--charcoal);
+  text-decoration: line-through;
+  margin-bottom: 2px;
 }
 
+.price__now {
+  display: flex;
+  align-items: flex-start;
+  color: var(--blue-2);
+  font-family: var(--font-display);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.price__symbol {
+  font-size: 1.1rem;
+  margin-top: 3px;
+}
+
+.price__int {
+  font-size: 2.5rem;
+  letter-spacing: -0.02em;
+}
+
+.price__cents {
+  font-size: 1.1rem;
+  margin-top: 3px;
+}
+
+/* ── Pie: una sola línea de texto, sin badges ───────────────────────────── */
+.card__foot {
+  margin-top: var(--space-2);
+  font-size: 0.72rem;
+  color: var(--charcoal);
+}
+
+/* ── Móvil: tarjeta horizontal compacta ─────────────────────────────────── */
 @media (max-width: 520px) {
-  .card {
-    flex-direction: row;
-    align-items: center;
-    gap: var(--space-2);
-    min-height: 130px;
-    border-radius: var(--radius);
-  }
+  .card { flex-direction: row; border-radius: var(--radius); }
 
-  .card__media {
+  .card__photo {
     aspect-ratio: 1 / 1;
-    width: 95px;
-    min-width: 95px;
-    height: 95px;
-    margin: 0 0 0 var(--space-2);
+    width: 116px;
+    min-width: 116px;
     flex-shrink: 0;
+    padding: var(--space-3);
   }
 
-  .card__img,
-  .card__img--empty {
-    width: 100%;
-    height: 100%;
+  .save-sticker {
+    top: 4px; left: 4px; width: 46px; height: 46px;
+    font-size: 0.48rem;
   }
+  .ribbon { top: 12px; right: -50px; width: 150px; }
+  .ribbon__text { font-size: 0.42rem; }
 
-  .badge {
-    top: 2px;
-    left: 2px;
-    font-size: 0.46rem;
-    padding: 2px 5px;
-  }
+  .card__body { flex: 1; padding: var(--space-3); min-width: 0; }
+  .card__name { font-size: 0.9rem; }
+  .card__sub { font-size: 0.66rem; }
 
-  /* En vistas pequeñas la etiqueta de disponibilidad va a la esquina
-     inferior izquierda de la foto. */
-  .stock-tag {
-    top: auto;
-    right: auto;
-    bottom: 4px;
-    left: 4px;
-    gap: 4px;
-    padding: 2px 6px;
-    font-size: 0.6rem;
-  }
-
-  .card__body {
-    flex: 1;
-    padding: var(--space-2) var(--space-2) var(--space-2) 0;
-    gap: var(--space-1);
-  }
-
-  .card__name {
-    font-size: 0.8rem;
-    min-height: 2em;
-  }
-
-  .card__details {
-    font-size: 0.56rem;
-    letter-spacing: 0.04em;
-  }
-
-  /* En móvil la card es horizontal y baja: reducimos la compatibilidad a
-     una sola línea para no romper el alto. */
-  .card__compat {
-    padding: var(--space-1) var(--space-2);
-    gap: 0;
-  }
-
-  .card__compat-title {
-    font-size: 0.54rem;
-  }
-
-  .card__compat-list {
-    /* Solo la primera fila visible en móvil. */
-    max-height: 1.1rem;
-    overflow: hidden;
-  }
-
-  .card__compat-item {
-    font-size: 0.68rem;
-  }
-
-  .card__compat-years {
-    font-size: 0.62rem;
-  }
-
-  .card__compat-more {
-    font-size: 0.6rem;
-  }
-
-  .card__meta {
-    padding-top: 0;
-    gap: var(--space-1);
-  }
-
-  .card__price {
-    font-size: 0.8rem;
-  }
-
-  .card__sku {
-    font-size: 0.64rem;
-  }
+  .price__int { font-size: 1.7rem; }
+  .price__symbol, .price__cents { font-size: 0.85rem; }
+  .card__foot { font-size: 0.64rem; }
 }
 </style>

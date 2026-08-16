@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useAdminParts, toPartInput } from '@/composables/useAdminParts'
 import { useParts } from '@/composables/useParts'
 import {
@@ -49,6 +49,8 @@ const form = reactive<PartInput>(
         description: null,
         material: null,
         image_url: null,
+        discount_amount: null,
+        is_best_deal: false,
       },
 )
 
@@ -87,8 +89,8 @@ function removeSpec(i: number) {
   specs.splice(i, 1)
 }
 function addCompat() {
-  const y = 2020
-  compat.push({ vehicle_brand: '', vehicle_model: '', year_from: y, year_to: y })
+  // Años opcionales: arrancan vacíos (null), el admin los llena si aplica.
+  compat.push({ vehicle_brand: '', vehicle_model: '', year_from: null, year_to: null })
 }
 function removeCompat(i: number) {
   compat.splice(i, 1)
@@ -97,6 +99,35 @@ function removeCompat(i: number) {
 // ── Guardar ──────────────────────────────────────────────────────────────────
 const saving = ref(false)
 const error = ref<string | null>(null)
+
+// Vista previa de la oferta en el formulario: mismo cálculo que la tarjeta.
+// El precio que captura el admin es el precio NORMAL; el descuento es un monto
+// FIJO en USD que se le resta:
+//   final = price - discount_amount ; ahorro = discount_amount
+const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'USD' })
+
+// El monto viene de un <input type="number"> con v-model.number: vacío = "" (string),
+// no null. Normalizamos a number|null para validar y calcular sin sorpresas.
+const discountAmount = computed<number | null>(() => {
+  const raw = form.discount_amount as number | string | null
+  if (raw === null || raw === undefined || (typeof raw === 'string' && raw.trim() === '')) {
+    return null
+  }
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : null
+})
+
+const offerPreview = computed(() => {
+  const save = discountAmount.value
+  if (save === null || save <= 0 || form.price <= 0 || save >= form.price) return null
+  const original = form.price
+  const final = original - save
+  return {
+    finalFmt: money.format(final),
+    originalFmt: money.format(original),
+    saveFmt: money.format(save),
+  }
+})
 
 async function onSubmit() {
   error.value = null
@@ -109,12 +140,30 @@ async function onSubmit() {
     error.value = 'El precio debe ser un número válido.'
     return
   }
+  // El descuento es opcional. Solo validamos si el admin escribió algo: un campo
+  // vacío (discountAmount === null) es válido y significa "sin oferta". Si hay
+  // valor, debe ser > 0 y menor que el precio (para no dejar un final ≤ 0).
+  if (discountAmount.value !== null) {
+    if (discountAmount.value <= 0) {
+      error.value = 'El descuento debe ser un monto en USD mayor que 0, o dejarse vacío.'
+      return
+    }
+    if (discountAmount.value >= form.price) {
+      error.value = 'El descuento no puede ser igual o mayor que el precio.'
+      return
+    }
+  }
 
   saving.value = true
   try {
     // Si hay archivo nuevo, se sube primero y su URL pública va a image_url.
+    // Pasamos la URL anterior para que uploadImage borre la foto vieja del bucket.
     if (imageFile.value) {
-      form.image_url = await uploadImage(imageFile.value, form.code)
+      form.image_url = await uploadImage(
+        imageFile.value,
+        form.code,
+        props.part?.image_url ?? null,
+      )
     }
 
     // Normalizamos textos opcionales vacíos a null.
@@ -125,6 +174,9 @@ async function onSubmit() {
       brand: form.brand.trim(),
       description: form.description?.trim() || null,
       material: form.material?.trim() || null,
+      // Descuento vacío o inválido → null (sin oferta). Usamos el valor ya
+      // normalizado (discountAmount), no el crudo del input que puede ser "".
+      discount_amount: discountAmount.value,
     }
 
     if (isEdit && props.part) {
@@ -224,6 +276,37 @@ async function onSubmit() {
           placeholder="Detalle breve de la pieza."
         ></textarea>
       </label>
+    </fieldset>
+
+    <!-- Oferta (opcional): descuento y "mejor oferta" para la tarjeta del catálogo. -->
+    <fieldset class="block">
+      <legend class="block__legend">Oferta (opcional)</legend>
+      <div class="grid">
+        <label class="field">
+          <span class="field__label">Descuento (USD)</span>
+          <input
+            v-model.number="form.discount_amount"
+            type="number"
+            min="0"
+            step="0.01"
+            class="field__input"
+            placeholder="Ej. 3.50 — vacío = sin oferta"
+          />
+        </label>
+        <label class="field field--check">
+          <input v-model="form.is_best_deal" type="checkbox" class="field__check" />
+          <span class="field__label">Marcar como “Mejor oferta” (cinta destacada)</span>
+        </label>
+      </div>
+      <p v-if="offerPreview" class="offer-hint">
+        Precio final <b>{{ offerPreview.finalFmt }}</b> ·
+        antes <s>{{ offerPreview.originalFmt }}</s> ·
+        <span class="offer-hint__save">ahorras {{ offerPreview.saveFmt }}</span>
+      </p>
+      <p v-else class="block__empty">
+        Sin descuento: la tarjeta muestra solo el precio normal. El precio de
+        arriba es el normal; el descuento en USD se le resta para el precio final.
+      </p>
     </fieldset>
 
     <!-- Foto -->
@@ -395,6 +478,32 @@ async function onSubmit() {
 .field--full {
   grid-column: 1 / -1;
 }
+
+/* Checkbox de "mejor oferta": etiqueta a la derecha, alineada con la casilla. */
+.field--check {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-2);
+  align-self: end;
+  padding-bottom: 10px;
+}
+
+.field__check {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--blue);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.offer-hint {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--charcoal);
+}
+.offer-hint b { color: var(--blue-2); }
+.offer-hint s { opacity: 0.7; }
+.offer-hint__save { color: var(--orange-2); }
 
 .field__label {
   font-size: 0.8rem;

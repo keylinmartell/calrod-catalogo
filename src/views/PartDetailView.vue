@@ -18,13 +18,26 @@ const part = ref<Part | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 
+const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'USD' })
+
+// Oferta: mismo modelo que PartCard. `price` es el precio NORMAL; si hay
+// discount_amount válido (>0 y < price), el final es `price - descuento`.
+const offer = computed(() => {
+  const p = part.value
+  if (!p) return null
+  const save = p.discount_amount
+  if (!save || save <= 0) return null
+  const final = p.price - save
+  if (final <= 0) return null
+  return {
+    finalFmt: money.format(final),
+    originalFmt: money.format(p.price),
+    saveFmt: money.format(save),
+  }
+})
+
 const priceFmt = computed(() =>
-  part.value
-    ? new Intl.NumberFormat('es-MX', {
-        style: 'currency',
-        currency: 'USD',
-      }).format(part.value.price)
-    : '',
+  part.value ? money.format(part.value.price) : '',
 )
 
 const availabilityDotClass = computed(() =>

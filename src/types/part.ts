@@ -21,8 +21,8 @@ export interface PartCompatibility {
   part_id: string
   vehicle_brand: string
   vehicle_model: string
-  year_from: number
-  year_to: number
+  year_from: number | null
+  year_to: number | null
 }
 
 export interface Part {
@@ -37,6 +37,15 @@ export interface Part {
   description: string | null
   material: string | null
   image_url: string | null
+  /**
+   * Oferta (opcionales, columnas 0008 → 0010). Si vienen null/undefined la pieza
+   * se muestra sin sticker de ahorro ni cinta de "mejor oferta".
+   *  - discount_amount: monto FIJO de descuento en USD (>0). `price` es el precio
+   *    NORMAL; el precio final mostrado es `price - discount_amount`.
+   *  - is_best_deal: marca manual para la cinta "MEJOR OFERTA".
+   */
+  discount_amount?: number | null
+  is_best_deal?: boolean | null
   created_at: string
   categories?: Category | null
   part_specs?: PartSpec[]
@@ -76,6 +85,8 @@ export interface PartInput {
   description: string | null
   material: string | null
   image_url: string | null
+  discount_amount: number | null
+  is_best_deal: boolean
 }
 
 /** Campos escribibles de `categories` (sin id/created_at). */
@@ -111,6 +122,6 @@ export interface SpecInput {
 export interface CompatInput {
   vehicle_brand: string
   vehicle_model: string
-  year_from: number
-  year_to: number
+  year_from: number | null
+  year_to: number | null
 }

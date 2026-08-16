@@ -54,7 +54,7 @@ function editPart(part: Part) {
 async function removePart(part: Part) {
   if (!confirm(`¿Borrar "${part.name}"? Esta acción no se puede deshacer.`)) return
   try {
-    await deletePart(part.id)
+    await deletePart(part.id, part.image_url)
     await loadList()
   } catch (e) {
     alert('No se pudo borrar la pieza. ¿Sigue tu sesión activa?')

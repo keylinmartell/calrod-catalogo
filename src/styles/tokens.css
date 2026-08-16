@@ -28,6 +28,11 @@
   --warn: #fbbf24;
   --danger: #f87171;
 
+  /* Naranja de oferta (stickers/etiquetas de ahorro tipo volante de tienda).
+     --orange = fondo del sticker; --orange-2 = texto de "ahorras $X". */
+  --orange: #e2703a;
+  --orange-2: #f4a06a;
+
   /* Bordes y líneas */
   --border: rgba(236, 238, 242, 0.08);
   --border-strong: rgba(236, 238, 242, 0.14);
@@ -94,6 +99,10 @@
   --ok: #2f8f57;
   --warn: #b7791f;
   --danger: #d64545;
+
+  /* Naranja de oferta en claro: un punto más profundo para contraste sobre blanco. */
+  --orange: #d15a24;
+  --orange-2: #b0500f;
 
   /* Bordes: ahora oscuros y translúcidos sobre fondo claro. */
   --border: rgba(20, 23, 29, 0.1);

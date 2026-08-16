@@ -1,7 +1,21 @@
 <script setup lang="ts">
 defineProps<{
-  items: { vehicle_brand: string; vehicle_model: string; year_from: number; year_to: number }[]
+  items: {
+    vehicle_brand: string
+    vehicle_model: string
+    year_from: number | null
+    year_to: number | null
+  }[]
 }>()
+
+// Rango de años legible aunque falte alguno (o los dos): "2015–2020", "2015+",
+// "hasta 2020" o vacío. Los años son opcionales en la BD.
+function yearRange(from: number | null, to: number | null): string {
+  if (from && to) return from === to ? `${from}` : `${from}–${to}`
+  if (from) return `${from}+`
+  if (to) return `hasta ${to}`
+  return ''
+}
 </script>
 
 <template>
@@ -21,7 +35,10 @@ defineProps<{
           <span class="compat-brand">{{ item.vehicle_brand }}</span>
           <span class="compat-model">{{ item.vehicle_model }}</span>
         </div>
-        <span class="compat-years mono">{{ item.year_from }}–{{ item.year_to }}</span>
+        <span
+          v-if="yearRange(item.year_from, item.year_to)"
+          class="compat-years mono"
+        >{{ yearRange(item.year_from, item.year_to) }}</span>
       </div>
     </div>
     <p v-else class="empty-note">Sin compatibilidad registrada todavía.</p>
