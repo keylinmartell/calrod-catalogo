@@ -1,15 +1,25 @@
 import { defineStore } from 'pinia'
 import { useParts } from '@/composables/useParts'
 import { useStoreSettings } from '@/composables/useStoreSettings'
-import type { Category, Part, StoreSettings } from '@/types/part'
+import type { Brand, Category, Part, StoreSettings } from '@/types/part'
 
 interface CatalogState {
   parts: Part[]
   categories: Category[]
+  brands: Brand[]
+  allVehicles: { vehicle_brand: string; vehicle_model: string; motor: string | null }[]
   loading: boolean
   error: string | null
   search: string
+  searchInResults: string
+  viewMode: 'list' | 'grid'
   activeCategories: string[]
+  /** Ids de marca de pieza (parts.brand_id) filtradas. */
+  activeBrands: string[]
+  /** Filtros por vehículo compatible (texto exacto). */
+  vehicleBrand: string
+  vehicleModel: string
+  motor: string
   stats: {
     activeParts: number
     brandsCovered: number
@@ -25,10 +35,18 @@ export const useCatalogStore = defineStore('catalog', {
   state: (): CatalogState => ({
     parts: [],
     categories: [],
+    brands: [],
+    allVehicles: [],
     loading: false,
     error: null,
     search: '',
+    searchInResults: '',
+    viewMode: 'grid',
     activeCategories: [],
+    activeBrands: [],
+    vehicleBrand: '',
+    vehicleModel: '',
+    motor: '',
     stats: null,
     statsLoading: false,
     storeSettings: null,
@@ -48,6 +66,10 @@ export const useCatalogStore = defineStore('catalog', {
         this.parts = await fetchParts({
           search: this.search,
           categories: this.activeCategories,
+          brands: this.activeBrands,
+          vehicleBrand: this.vehicleBrand,
+          vehicleModel: this.vehicleModel,
+          motor: this.motor,
         })
       } catch (e) {
         // Estado de error claro, nunca pantalla en blanco (§7).
@@ -71,6 +93,17 @@ export const useCatalogStore = defineStore('catalog', {
       }
     },
 
+    /** Carga las marcas de pieza desde la BD (para el filtro global por marca). */
+    async loadBrands() {
+      const { fetchBrands } = useParts()
+      try {
+        this.brands = await fetchBrands()
+      } catch (e) {
+        this.brands = []
+        console.error('[CalRod] loadBrands:', e)
+      }
+    },
+
     /** Búsqueda con debounce ~300ms (§6): consulta Supabase, no filtra en el navegador. */
     setSearch(value: string) {
       this.search = value
@@ -87,9 +120,62 @@ export const useCatalogStore = defineStore('catalog', {
       this.loadParts()
     },
 
+    /** Filtro global por marca de pieza (toggle: click de nuevo la quita). */
+    toggleBrand(brandId: string) {
+      const i = this.activeBrands.indexOf(brandId)
+      if (i === -1) this.activeBrands.push(brandId)
+      else this.activeBrands.splice(i, 1)
+      this.loadParts()
+    },
+
+    /** Carga todas las combinaciones de vehículos disponibles para poblar los filtros. */
+    async loadAllVehicles() {
+      const { fetchVehicleCompatibilities } = useParts()
+      try {
+        this.allVehicles = await fetchVehicleCompatibilities()
+      } catch (e) {
+        this.allVehicles = []
+        console.error('[CalRod] loadAllVehicles:', e)
+      }
+    },
+
+    setViewMode(mode: 'list' | 'grid') {
+      this.viewMode = mode
+    },
+
+    setSearchInResults(value: string) {
+      this.searchInResults = value
+    },
+
+    /** Toggle de marca de vehículo (click activa o desactiva). */
+    toggleVehicleBrand(brand: string) {
+      if (this.vehicleBrand.toLowerCase() === brand.toLowerCase()) {
+        this.vehicleBrand = ''
+      } else {
+        this.vehicleBrand = brand
+      }
+      this.vehicleModel = ''
+      this.loadParts()
+    },
+
+    /** Toggle de modelo de vehículo (click activa o desactiva). */
+    toggleVehicleModel(model: string) {
+      if (this.vehicleModel.toLowerCase() === model.toLowerCase()) {
+        this.vehicleModel = ''
+      } else {
+        this.vehicleModel = model
+      }
+      this.loadParts()
+    },
+
     clearFilters() {
       this.search = ''
+      this.searchInResults = ''
       this.activeCategories = []
+      this.activeBrands = []
+      this.vehicleBrand = ''
+      this.vehicleModel = ''
+      this.motor = ''
       this.loadParts()
     },
 

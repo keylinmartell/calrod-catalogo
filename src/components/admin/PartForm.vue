@@ -8,6 +8,7 @@ import {
 } from '@/types/part'
 import type {
   Availability,
+  Brand,
   Category,
   CompatInput,
   OriginType,
@@ -20,17 +21,21 @@ const props = defineProps<{ part: Part | null }>()
 const emit = defineEmits<{ saved: []; cancel: [] }>()
 
 const { createPart, updatePart, uploadImage } = useAdminParts()
-const { fetchCategories } = useParts()
+const { fetchCategories, fetchBrands } = useParts()
 
 const isEdit = props.part !== null
 
-// Categorías para el select (cargadas de la BD, ya no hardcodeadas).
+// Categorías y marcas para los selects (cargadas de la BD, ya no hardcodeadas).
 const categories = ref<Category[]>([])
+const brands = ref<Brand[]>([])
 onMounted(async () => {
   try {
-    categories.value = await fetchCategories()
+    ;[categories.value, brands.value] = await Promise.all([
+      fetchCategories(),
+      fetchBrands(),
+    ])
   } catch (e) {
-    console.error('[CalRod] PartForm fetchCategories:', e)
+    console.error('[CalRod] PartForm carga catálogos:', e)
   }
 })
 
@@ -42,7 +47,7 @@ const form = reactive<PartInput>(
         code: '',
         name: '',
         category_id: null,
-        brand: '',
+        brand_id: null,
         origin_type: 'original',
         price: 0,
         availability: 'disponible',
@@ -64,6 +69,7 @@ const compat = reactive<CompatInput[]>(
     vehicle_model: c.vehicle_model,
     year_from: c.year_from,
     year_to: c.year_to,
+    motor: c.motor ?? null,
   })) ?? [],
 )
 
@@ -89,8 +95,14 @@ function removeSpec(i: number) {
   specs.splice(i, 1)
 }
 function addCompat() {
-  // Años opcionales: arrancan vacíos (null), el admin los llena si aplica.
-  compat.push({ vehicle_brand: '', vehicle_model: '', year_from: null, year_to: null })
+  // Años y motor opcionales: arrancan vacíos (null), el admin los llena si aplica.
+  compat.push({
+    vehicle_brand: '',
+    vehicle_model: '',
+    year_from: null,
+    year_to: null,
+    motor: null,
+  })
 }
 function removeCompat(i: number) {
   compat.splice(i, 1)
@@ -132,8 +144,12 @@ const offerPreview = computed(() => {
 async function onSubmit() {
   error.value = null
 
-  if (!form.code.trim() || !form.name.trim() || !form.brand.trim()) {
-    error.value = 'Código, nombre y marca son obligatorios.'
+  if (!form.code.trim() || !form.name.trim()) {
+    error.value = 'Código y nombre son obligatorios.'
+    return
+  }
+  if (!form.brand_id) {
+    error.value = 'Selecciona una marca. Si no existe, créala en la pestaña “Marcas”.'
     return
   }
   if (form.price < 0 || Number.isNaN(form.price)) {
@@ -171,7 +187,6 @@ async function onSubmit() {
       ...form,
       code: form.code.trim(),
       name: form.name.trim(),
-      brand: form.brand.trim(),
       description: form.description?.trim() || null,
       material: form.material?.trim() || null,
       // Descuento vacío o inválido → null (sin oferta). Usamos el valor ya
@@ -224,7 +239,12 @@ async function onSubmit() {
         </label>
         <label class="field">
           <span class="field__label">Marca *</span>
-          <input v-model="form.brand" class="field__input" placeholder="CalRod Original" />
+          <select v-model="form.brand_id" class="field__input">
+            <option :value="null" disabled>— Selecciona marca —</option>
+            <option v-for="b in brands" :key="b.id" :value="b.id">
+              {{ b.name }}
+            </option>
+          </select>
         </label>
         <label class="field">
           <span class="field__label">Precio (USD) *</span>
@@ -379,6 +399,11 @@ async function onSubmit() {
             class="field__input"
             placeholder="Hasta"
           />
+          <input
+            v-model="c.motor"
+            class="field__input"
+            placeholder="Motor (opc.) — 1.6L"
+          />
           <button
             type="button"
             class="rows__remove"
@@ -389,7 +414,7 @@ async function onSubmit() {
           </button>
         </div>
       </div>
-      <p v-else class="block__empty">Sin compatibilidad. Agrega marca, modelo y años.</p>
+      <p v-else class="block__empty">Sin compatibilidad. Agrega marca, modelo, años y motor (opcional).</p>
       <button type="button" class="btn btn--ghost btn--sm" @click="addCompat">
         + Agregar compatibilidad
       </button>
@@ -605,7 +630,7 @@ select.field__input {
 }
 
 .rows__item--compat {
-  grid-template-columns: 1.2fr 1.2fr 0.8fr 0.8fr auto;
+  grid-template-columns: 1.2fr 1.2fr 0.8fr 0.8fr 1fr auto;
 }
 
 .rows__remove {

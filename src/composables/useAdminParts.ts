@@ -129,6 +129,8 @@ export function useAdminParts() {
         // opcionales: normalizamos vacío/NaN a null.
         year_from: toYearOrNull(c.year_from),
         year_to: toYearOrNull(c.year_to),
+        // Motor opcional: texto vacío → null (aplica sin importar el motor).
+        motor: c.motor?.trim() || null,
       }))
     if (cleanCompat.length) {
       const { error } = await supabase.from('part_compatibility').insert(cleanCompat)
@@ -191,7 +193,7 @@ export function toPartInput(part: Part): PartInput {
     code: part.code,
     name: part.name,
     category_id: part.category_id,
-    brand: part.brand,
+    brand_id: part.brand_id,
     origin_type: part.origin_type,
     price: part.price,
     availability: part.availability,

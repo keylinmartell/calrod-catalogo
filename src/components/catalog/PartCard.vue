@@ -90,7 +90,7 @@ const ribbon = computed(() => {
     <!-- Cuerpo tipo volante -->
     <div class="card__body">
       <h3 class="card__name">{{ part.name }}</h3>
-      <p class="card__sub mono">{{ part.brand }} · {{ part.code }}</p>
+      <p class="card__sub mono">{{ part.brands?.name ?? '—' }} · {{ part.code }}</p>
 
       <!-- Precio estilo anuncio: $ chico, entero grande, centavos chicos -->
       <div class="price">
@@ -101,7 +101,6 @@ const ribbon = computed(() => {
           <span class="price__cents">{{ priceParts.cents }}</span>
         </div>
       </div>
-
       <p class="card__foot mono">{{ footLine }}</p>
     </div>
   </RouterLink>
@@ -112,28 +111,26 @@ const ribbon = computed(() => {
   display: flex;
   flex-direction: column;
   background: var(--surface);
-  border: 1px solid transparent;
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
-  transition: border-color 0.15s ease;
+  transition: border-color 0.15s ease, transform 0.12s ease;
 }
 
 .card:hover {
-  border-color: var(--border);
+  border-color: var(--blue-2);
+  transform: translateY(-2px);
 }
 
-/* ── Franja de foto: "estudio", con más aire que el resto de la card ────── */
+/* ── Franja de foto: cuadrada y compacta ────── */
 .card__photo {
   position: relative;
-  /* Caja cuadrada: encuadra bien piezas redondas (discos, etc.) sin que queden
-     pegadas a un lado como pasaba con la caja apaisada 4/3. object-fit: contain
-     nunca recorta la imagen; esto solo le da proporción con más alto. */
   aspect-ratio: 1 / 1;
   background: var(--surface-2);
   display: grid;
   place-items: center;
   overflow: hidden;
-  padding: var(--space-5);
+  padding: var(--space-3);
 }
 
 .card__img {
@@ -142,77 +139,77 @@ const ribbon = computed(() => {
   object-fit: contain;
   object-position: center;
   display: block;
-  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35));
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
 }
 
 .card__img--empty {
   color: var(--charcoal);
-  font-size: 0.8rem;
+  font-size: 0.72rem;
 }
 
-/* ── Sticker de ahorro (estallido) ──────────────────────────────────────── */
+/* ── Sticker de ahorro ──────────────────────────────────────── */
 .save-sticker {
   position: absolute;
-  top: 8px;
-  left: 8px;
-  width: 62px;
-  height: 62px;
+  top: 6px;
+  left: 6px;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
-  background: var(--orange);
+  background: var(--blue);
   color: #fff;
   font-family: var(--font-display);
-  font-size: 0.62rem;
+  font-size: 0.52rem;
   font-weight: 800;
   line-height: 1.05;
-  transform: rotate(-8deg);
+  transform: rotate(-6deg);
   clip-path: polygon(
     50% 0%, 61% 15%, 79% 9%, 82% 28%, 100% 35%, 91% 52%,
     100% 69%, 82% 74%, 79% 93%, 61% 87%, 50% 100%, 39% 87%,
     21% 93%, 18% 74%, 0% 69%, 9% 52%, 0% 35%, 18% 28%,
     21% 9%, 39% 15%
   );
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
-  z-index: 2;
-}
-
-/* ── Cinta de esquina diagonal ──────────────────────────────────────────── */
-.ribbon {
-  position: absolute;
-  top: 18px;
-  right: -46px;
-  width: 160px;
-  transform: rotate(45deg);
-  background: var(--blue);
-  text-align: center;
-  padding: 4px 0;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
   z-index: 2;
 }
-.ribbon--deal { background: var(--orange); }
+
+/* ── Cinta diagonal ──────────────────────────────────────────── */
+.ribbon {
+  position: absolute;
+  top: 14px;
+  right: -42px;
+  width: 140px;
+  transform: rotate(45deg);
+  background: var(--blue);
+  text-align: center;
+  padding: 3px 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+  z-index: 2;
+}
+.ribbon--deal { background: var(--blue-2); }
 .ribbon__text {
   display: block;
   color: #fff;
   font-family: var(--font-display);
-  font-size: 0.5rem;
+  font-size: 0.45rem;
   font-weight: 800;
   letter-spacing: 0.04em;
   white-space: nowrap;
 }
 
-/* ── Cuerpo: producto primero, sin chrome de UI ─────────────────────────── */
+/* ── Cuerpo: compacto ─────────────────────────────────────────── */
 .card__body {
   display: flex;
   flex-direction: column;
-  padding: var(--space-4);
+  padding: var(--space-3);
 }
 
 .card__name {
   font-family: var(--font-display);
-  font-size: 1.1rem;
-  font-weight: 800;
+  font-size: 0.92rem;
+  font-weight: 700;
   line-height: 1.25;
   color: var(--cream);
   display: -webkit-box;
@@ -222,25 +219,25 @@ const ribbon = computed(() => {
 }
 
 .card__sub {
-  margin-top: 4px;
-  font-size: 0.74rem;
+  margin-top: 2px;
+  font-size: 0.68rem;
   color: var(--charcoal);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* ── Precio tipo anuncio ─────────────────────────────────────────────────── */
+/* ── Precio estilo anuncio ─────────────────────────────────────────────────── */
 .price {
-  margin-top: var(--space-3);
+  margin-top: var(--space-2);
 }
 
 .price__was {
   display: block;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   color: var(--charcoal);
   text-decoration: line-through;
-  margin-bottom: 2px;
+  margin-bottom: 1px;
 }
 
 .price__now {
@@ -253,52 +250,34 @@ const ribbon = computed(() => {
 }
 
 .price__symbol {
-  font-size: 1.1rem;
-  margin-top: 3px;
+  font-size: 0.88rem;
+  margin-top: 2px;
 }
 
 .price__int {
-  font-size: 2.5rem;
+  font-size: 1.85rem;
   letter-spacing: -0.02em;
 }
 
 .price__cents {
-  font-size: 1.1rem;
-  margin-top: 3px;
+  font-size: 0.88rem;
+  margin-top: 2px;
 }
 
-/* ── Pie: una sola línea de texto, sin badges ───────────────────────────── */
+/* ── Pie ─────────────────────────────────────────────────────────────────── */
 .card__foot {
-  margin-top: var(--space-2);
-  font-size: 0.72rem;
+  margin-top: 6px;
+  font-size: 0.65rem;
   color: var(--charcoal);
 }
 
-/* ── Móvil: tarjeta horizontal compacta ─────────────────────────────────── */
+/* ── Móvil: tarjeta cuadrícula compacta ─────────────────────────────────── */
 @media (max-width: 520px) {
-  .card { flex-direction: row; border-radius: var(--radius); }
-
-  .card__photo {
-    aspect-ratio: 1 / 1;
-    width: 116px;
-    min-width: 116px;
-    flex-shrink: 0;
-    padding: var(--space-3);
-  }
-
-  .save-sticker {
-    top: 4px; left: 4px; width: 46px; height: 46px;
-    font-size: 0.48rem;
-  }
-  .ribbon { top: 12px; right: -50px; width: 150px; }
-  .ribbon__text { font-size: 0.42rem; }
-
-  .card__body { flex: 1; padding: var(--space-3); min-width: 0; }
-  .card__name { font-size: 0.9rem; }
-  .card__sub { font-size: 0.66rem; }
-
-  .price__int { font-size: 1.7rem; }
-  .price__symbol, .price__cents { font-size: 0.85rem; }
-  .card__foot { font-size: 0.64rem; }
+  .card__body { padding: var(--space-2); }
+  .card__name { font-size: 0.82rem; }
+  .card__sub { font-size: 0.62rem; }
+  .price__int { font-size: 1.45rem; }
+  .price__symbol, .price__cents { font-size: 0.75rem; }
+  .card__foot { font-size: 0.58rem; }
 }
 </style>

@@ -127,6 +127,11 @@ const ORIGINS = ['original', 'alternativa', 'remanufacturada']
 const AVAIL = ['disponible', 'disponible', 'disponible', 'stock_bajo', 'agotado']
 const REFACTION_BRANDS = ['CalRod Original', 'CalRod Plus', 'TorqueLine', 'MotorMex', 'ProAuto']
 
+// Motores de ejemplo (opcionales). El primero, '', significa "sin motor" —
+// no todas las piezas dependen del motor, así que buena parte de la
+// compatibilidad se siembra sin él.
+const MOTORS = ['', '', '', '1.6L', '2.0L', '1.8L', '2.4L', 'V6 3.5', '1.5 Turbo']
+
 function fillSpec(v) {
   return v
     .replace('{d}', int(240, 320))
@@ -168,7 +173,8 @@ for (const [cat, cfg] of Object.entries(CATS)) {
       usedBrands.add(key)
       const yFrom = int(2008, 2020)
       const yTo = Math.min(yFrom + int(0, 6), 2025)
-      compat.push([vb, vm, yFrom, yTo])
+      const motor = pick(MOTORS)
+      compat.push([vb, vm, yFrom, yTo, motor])
     }
 
     rows.push({ code, name, cat, brand, origin, price, availability, description, material, image_url, specs, compat })
@@ -212,13 +218,16 @@ insert into categories (name, slug) values
 ${CATEGORY_ROWS.map(([name, slug]) => `  ('${esc(name)}', '${slug}')`).join(',\n')}
 on conflict (slug) do nothing;
 
+-- Nota: las marcas (brands) NO se siembran. Se introducen manualmente desde el
+-- panel admin; las piezas nacen sin marca (brand_id = null) y se asignan luego.
+
 `
 
 for (const r of rows) {
   const catSlug = CAT_SLUG[r.cat] ?? r.cat
   sql += `with p as (
-  insert into parts (code, name, category_id, brand, origin_type, price, availability, description, material, image_url)
-  values ('${esc(r.code)}', '${esc(r.name)}', (select id from categories where slug = '${catSlug}'), '${esc(r.brand)}', '${r.origin}', ${r.price}, '${r.availability}', '${esc(r.description)}', '${esc(r.material)}', '${esc(r.image_url)}')
+  insert into parts (code, name, category_id, brand_id, origin_type, price, availability, description, material, image_url)
+  values ('${esc(r.code)}', '${esc(r.name)}', (select id from categories where slug = '${catSlug}'), null, '${r.origin}', ${r.price}, '${r.availability}', '${esc(r.description)}', '${esc(r.material)}', '${esc(r.image_url)}')
   on conflict (code) do update set name = excluded.name
   returning id
 )`
@@ -226,7 +235,12 @@ for (const r of rows) {
     .map(([l, v]) => `  ((select id from p), '${esc(l)}', '${esc(v)}')`)
     .join(',\n')
   const compatVals = r.compat
-    .map(([vb, vm, yf, yt]) => `  ((select id from p), '${esc(vb)}', '${esc(vm)}', ${yf}, ${yt})`)
+    .map(
+      ([vb, vm, yf, yt, motor]) =>
+        `  ((select id from p), '${esc(vb)}', '${esc(vm)}', ${yf}, ${yt}, ${
+          motor ? `'${esc(motor)}'` : 'null'
+        })`,
+    )
     .join(',\n')
 
   sql += `,
@@ -235,7 +249,7 @@ s as (
 ${specVals}
   returning 1
 )
-insert into part_compatibility (part_id, vehicle_brand, vehicle_model, year_from, year_to) values
+insert into part_compatibility (part_id, vehicle_brand, vehicle_model, year_from, year_to, motor) values
 ${compatVals};
 
 `

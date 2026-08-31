@@ -7,6 +7,7 @@ import type { Part } from '@/types/part'
 import { AVAILABILITY_LABELS } from '@/types/part'
 import PartForm from '@/components/admin/PartForm.vue'
 import CategoryManager from '@/components/admin/CategoryManager.vue'
+import BrandManager from '@/components/admin/BrandManager.vue'
 import StoreLocationManager from '@/components/admin/StoreLocationManager.vue'
 import GearSpinner from '@/components/brand/GearSpinner.vue'
 
@@ -18,8 +19,8 @@ const parts = ref<Part[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 
-// Pestaña activa del panel: catálogo de piezas, categorías o ubicación.
-const tab = ref<'parts' | 'categories' | 'location'>('parts')
+// Pestaña activa del panel: catálogo de piezas, categorías, marcas o ubicación.
+const tab = ref<'parts' | 'categories' | 'brands' | 'location'>('parts')
 
 // Vista: 'list' | 'edit'. En 'edit', `editing` es null para "nueva pieza".
 const view = ref<'list' | 'edit'>('list')
@@ -115,6 +116,13 @@ onMounted(loadList)
       </button>
       <button
         class="dash__tab"
+        :class="{ 'dash__tab--active': tab === 'brands' }"
+        @click="tab = 'brands'"
+      >
+        Marcas
+      </button>
+      <button
+        class="dash__tab"
         :class="{ 'dash__tab--active': tab === 'location' }"
         @click="tab = 'location'"
       >
@@ -124,6 +132,9 @@ onMounted(loadList)
 
     <!-- Sección: categorías -->
     <CategoryManager v-if="tab === 'categories'" />
+
+    <!-- Sección: marcas -->
+    <BrandManager v-else-if="tab === 'brands'" />
 
     <!-- Sección: ubicación de la tienda -->
     <StoreLocationManager v-else-if="tab === 'location'" />

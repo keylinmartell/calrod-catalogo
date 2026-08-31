@@ -131,8 +131,8 @@ watch(
 
           <div class="sheet__meta mono">
             <span>Núm. de parte <b>{{ part.code }}</b></span>
-            <span class="meta-sep">·</span>
-            <span>{{ part.brand }}</span>
+            <span v-if="part.brands" class="meta-sep">·</span>
+            <span v-if="part.brands">{{ part.brands.name }}</span>
           </div>
 
           <div class="price-row">

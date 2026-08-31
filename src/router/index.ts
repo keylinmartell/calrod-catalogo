@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 import CatalogView from '@/views/CatalogView.vue'
+import { useAuthStore } from '@/stores/authStore'
+import { useAuthPanel } from '@/composables/useAuthPanel'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -24,15 +26,36 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
-    // Panel admin: no enlazada desde header ni footer. Ocultarla es comodidad;
-    // la cerradura real son las policies RLS de admin (0004). Lazy + noindex.
-    path: '/admin-calrod',
+    // Panel admin. La cerradura real son las policies RLS de admin (0004);
+    // este guard solo evita mostrar el panel a quien no es admin y abre el
+    // login si hace falta. Lazy + noindex.
+    path: '/admin',
     name: 'admin',
     component: () => import('@/views/AdminView.vue'),
     meta: {
       title: 'Panel — Repuestos CalRod',
       description: 'Acceso interno.',
       noindex: true,
+      requiresAdmin: true,
+    },
+  },
+  {
+    path: '/terminos',
+    name: 'terms',
+    component: () => import('@/views/TermsView.vue'),
+    meta: {
+      title: 'Términos y Condiciones — Repuestos CalRod',
+      description: 'Términos y condiciones de uso del catálogo de Repuestos CalRod.',
+    },
+  },
+  {
+    path: '/privacidad',
+    name: 'privacy',
+    component: () => import('@/views/PrivacyView.vue'),
+    meta: {
+      title: 'Política de Privacidad — Repuestos CalRod',
+      description:
+        'Cómo tratamos los datos personales y la autenticación con Google en Repuestos CalRod.',
     },
   },
   {
@@ -52,6 +75,29 @@ const router = createRouter({
   scrollBehavior(_to, _from, savedPosition) {
     return savedPosition ?? { top: 0 }
   },
+})
+
+// Guard de acceso al panel admin. La seguridad real vive en las policies RLS
+// (0004); esto solo evita renderizar el panel a quien no corresponde y, si no
+// hay sesión, abre el panel de login en su lugar. El store/composable se
+// resuelven en tiempo de navegación (pinia ya está instalado para entonces).
+router.beforeEach(async (to) => {
+  if (!to.meta.requiresAdmin) return true
+
+  const auth = useAuthStore()
+  const authPanel = useAuthPanel()
+
+  // Aseguramos que la sesión guardada ya se resolvió antes de decidir.
+  await auth.init()
+
+  if (auth.isAdmin) return true
+
+  if (!auth.isAuthenticated) {
+    // Sin sesión: abrimos el login y no navegamos al panel.
+    authPanel.openPanel('login')
+  }
+  // Autenticado pero sin rol admin (o tras abrir login): al catálogo.
+  return { name: 'catalog' }
 })
 
 // SEO básico (§7): título y meta description por vista vía meta fields.

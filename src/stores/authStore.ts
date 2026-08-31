@@ -111,6 +111,23 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    /**
+     * signInWithGoogle — OAuth con Google. Redirige a Google y vuelve a la app;
+     * al volver, onAuthStateChange (en init) recoge la sesión y carga el profile.
+     * Requiere activar el proveedor Google en Supabase → Authentication → Providers.
+     */
+    async signInWithGoogle(): Promise<void> {
+      this.error = null
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin },
+      })
+      if (error) {
+        this.error = humanError(error.message)
+        console.error('[CalRod] signInWithGoogle:', error)
+      }
+    },
+
     async signOut() {
       await supabase.auth.signOut()
       this.session = null

@@ -5,6 +5,7 @@ defineProps<{
     vehicle_model: string
     year_from: number | null
     year_to: number | null
+    motor: string | null
   }[]
 }>()
 
@@ -33,7 +34,10 @@ function yearRange(from: number | null, to: number | null): string {
       <div v-for="(item, i) in items" :key="i" class="compat-row">
         <div class="compat-vehicle">
           <span class="compat-brand">{{ item.vehicle_brand }}</span>
-          <span class="compat-model">{{ item.vehicle_model }}</span>
+          <span class="compat-model">
+            {{ item.vehicle_model }}
+            <span v-if="item.motor" class="compat-motor">· {{ item.motor }}</span>
+          </span>
         </div>
         <span
           v-if="yearRange(item.year_from, item.year_to)"
@@ -84,6 +88,7 @@ function yearRange(from: number | null, to: number | null): string {
 .compat-vehicle { display: flex; flex-direction: column; }
 .compat-brand { font-size: 0.86rem; font-weight: 600; color: var(--cream); }
 .compat-model { font-size: 0.76rem; color: var(--charcoal); }
+.compat-motor { color: var(--blue-2); }
 .compat-years { font-size: 0.78rem; color: var(--blue-2); }
 .empty-note { color: var(--charcoal); font-size: 0.82rem; font-style: italic; margin: 0; }
 </style>

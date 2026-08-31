@@ -2,24 +2,26 @@
 import { onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useCatalogStore } from '@/stores/catalogStore'
+import { useFilters } from '@/composables/useFilters'
 import { useAppLoading } from '@/composables/useAppLoading'
 import TireWatermark from '@/components/brand/TireWatermark.vue'
 import GearSpinner from '@/components/brand/GearSpinner.vue'
 import MapPanel from '@/components/catalog/MapPanel.vue'
-import FilterBar from '@/components/catalog/FilterBar.vue'
+import CatalogSidebar from '@/components/catalog/CatalogSidebar.vue'
+import CatalogToolbar from '@/components/catalog/CatalogToolbar.vue'
+import PartListView from '@/components/catalog/PartListView.vue'
 import PartGrid from '@/components/catalog/PartGrid.vue'
 
 const store = useCatalogStore()
-const { parts, loading, error, resultCount, isEmpty, storeSettings } =
-  storeToRefs(store)
+const { loading, error, storeSettings } = storeToRefs(store)
+const { viewMode, displayParts, clearFilters } = useFilters()
 const { finishBoot } = useAppLoading()
 
 // Dialog de ubicación (solo se usa en móvil; el mapa inline se oculta ahí).
 const showMapDialog = ref(false)
+// Toggle de filtros en pantallas móviles
+const showMobileFilters = ref(false)
 
-// El hero tiene UN solo botón: en escritorio "Explorar catálogo" (baja al
-// catálogo); en móvil "Ubicación tienda" (abre el dialog del mapa). Detectamos
-// el ancho con matchMedia — mismo breakpoint que el CSS (860px).
 const isMobile = ref(false)
 const mq = window.matchMedia('(max-width: 860px)')
 const syncMobile = (e: MediaQueryList | MediaQueryListEvent) => {
@@ -36,28 +38,30 @@ function onHeroCta() {
 
 // Cerrar con Escape y bloquear el scroll del fondo mientras está abierto.
 function onKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape') showMapDialog.value = false
+  if (e.key === 'Escape') {
+    showMapDialog.value = false
+    showMobileFilters.value = false
+  }
 }
-watch(showMapDialog, (open) => {
-  document.body.style.overflow = open ? 'hidden' : ''
-  if (open) window.addEventListener('keydown', onKeydown)
+watch([showMapDialog, showMobileFilters], ([mapOpen, filterOpen]) => {
+  document.body.style.overflow = mapOpen || filterOpen ? 'hidden' : ''
+  if (mapOpen || filterOpen) window.addEventListener('keydown', onKeydown)
   else window.removeEventListener('keydown', onKeydown)
 })
 
 onMounted(async () => {
   syncMobile(mq)
   mq.addEventListener('change', syncMobile)
-  // Esperamos a que TODOS los endpoints de arranque respondan antes de quitar
-  // el overlay de carga global (useAppLoading): piezas, categorías y ubicación.
   await Promise.allSettled([
     store.loadParts(),
     store.loadCategories(),
+    store.loadBrands(),
+    store.loadAllVehicles(),
     store.loadStoreSettings(),
   ])
   finishBoot()
 })
 
-// Limpieza por si el componente se destruye con el dialog abierto.
 onBeforeUnmount(() => {
   document.body.style.overflow = ''
   window.removeEventListener('keydown', onKeydown)
@@ -76,11 +80,9 @@ onBeforeUnmount(() => {
           <span class="hero__title-grad">sin adivinar.</span>
         </h1>
         <p class="hero__lead">
-          Busque por nombre o número de parte y filtre por categoría. Cada pieza
-          muestra compatibilidad real por marca y modelo.
+          Busque por marca, modelo o número de parte. Cada pieza muestra compatibilidad
+          real garantizada.
         </p>
-        <!-- Un solo botón: en escritorio explora el catálogo; en móvil abre la
-             ubicación en un dialog. El icono cambia con el modo. -->
         <button type="button" class="btn btn--primary hero__cta" @click="onHeroCta">
           <template v-if="isMobile && storeSettings">
             <svg
@@ -119,13 +121,6 @@ onBeforeUnmount(() => {
         </button>
       </div>
 
-      <!-- El panel "CALROD · AL DÍA" (stats) se reemplaza por el mapa de ubicación. -->
-      <!-- <HeroPanel
-        :active-parts="stats?.activeParts ?? 0"
-        :brands-covered="stats?.brandsCovered ?? 0"
-        :availability-pct="stats?.availabilityPct ?? 0"
-        :loading="statsLoading"
-      /> -->
       <MapPanel
         v-if="storeSettings"
         class="hero__map"
@@ -136,33 +131,107 @@ onBeforeUnmount(() => {
     </div>
   </section>
 
-  <!-- Catálogo -->
+  <!-- Catálogo Principal con Layout 2 Columnas -->
   <section id="catalogo" class="catalog container">
-    <FilterBar :result-count="resultCount" />
-
-    <!-- Estado: cargando -->
-    <div v-if="loading" class="state" aria-live="polite">
-      <GearSpinner :size="44" />
-      <p>Cargando piezas…</p>
-    </div>
-
-    <!-- Estado: error de red -->
-    <div v-else-if="error" class="state state--error" role="alert">
-      <p>{{ error }}</p>
-      <button class="btn btn--ghost" @click="store.loadParts()">Reintentar</button>
-    </div>
-
-    <!-- Estado: vacío -->
-    <div v-else-if="isEmpty" class="state">
-      <p class="state__title">No encontramos piezas con esos filtros.</p>
-      <button class="btn btn--ghost" @click="store.clearFilters()">
-        Limpiar filtros
+    <!-- Botón de filtros para móvil -->
+    <div class="mobile-filter-trigger">
+      <button
+        type="button"
+        class="btn btn--ghost mobile-filter-btn"
+        @click="showMobileFilters = true"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="4" y1="21" x2="4" y2="14" />
+          <line x1="4" y1="10" x2="4" y2="3" />
+          <line x1="12" y1="21" x2="12" y2="12" />
+          <line x1="12" y1="8" x2="12" y2="3" />
+          <line x1="20" y1="21" x2="20" y2="16" />
+          <line x1="20" y1="12" x2="20" y2="3" />
+          <line x1="1" y1="14" x2="7" y2="14" />
+          <line x1="9" y1="8" x2="15" y2="8" />
+          <line x1="17" y1="16" x2="23" y2="16" />
+        </svg>
+        Filtros de búsqueda
       </button>
     </div>
 
-    <!-- Resultados -->
-    <PartGrid v-else :parts="parts" />
+    <div class="catalog__layout">
+      <!-- Columna izquierda: Sidebar de filtros -->
+      <div class="catalog__sidebar-col">
+        <CatalogSidebar />
+      </div>
+
+      <!-- Columna derecha: Toolbar + Resultados -->
+      <div class="catalog__main-col">
+        <CatalogToolbar />
+
+        <!-- Estado: cargando -->
+        <div v-if="loading" class="state" aria-live="polite">
+          <GearSpinner :size="44" />
+          <p>Cargando piezas…</p>
+        </div>
+
+        <!-- Estado: error de red -->
+        <div v-else-if="error" class="state state--error" role="alert">
+          <p>{{ error }}</p>
+          <button class="btn btn--ghost" @click="store.loadParts()">Reintentar</button>
+        </div>
+
+        <!-- Estado: vacío -->
+        <div v-else-if="!displayParts.length" class="state">
+          <p class="state__title">No encontramos piezas con esos filtros.</p>
+          <button class="btn btn--ghost" @click="clearFilters">
+            Limpiar filtros
+          </button>
+        </div>
+
+        <!-- Resultados: Vista Lista o Vista Cuadrícula -->
+        <template v-else>
+          <PartListView v-if="viewMode === 'list'" :parts="displayParts" />
+          <PartGrid v-else :parts="displayParts" />
+        </template>
+      </div>
+    </div>
   </section>
+
+  <!-- Drawer de filtros para móvil -->
+  <Teleport to="body">
+    <div
+      v-if="showMobileFilters"
+      class="mobile-filter-drawer"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Filtros del catálogo"
+    >
+      <div class="mobile-filter-drawer__backdrop" @click="showMobileFilters = false" />
+      <div class="mobile-filter-drawer__content">
+        <div class="mobile-filter-drawer__header">
+          <h3 class="mobile-filter-drawer__title">Filtros</h3>
+          <button
+            type="button"
+            class="mobile-filter-drawer__close"
+            aria-label="Cerrar filtros"
+            @click="showMobileFilters = false"
+          >
+            ✕
+          </button>
+        </div>
+        <div class="mobile-filter-drawer__body">
+          <CatalogSidebar />
+        </div>
+        <div class="mobile-filter-drawer__footer">
+          <button
+            type="button"
+            class="btn btn--primary"
+            style="width: 100%"
+            @click="showMobileFilters = false"
+          >
+            Ver {{ displayParts.length }} resultados
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 
   <!-- Dialog de ubicación (móvil): se abre desde "Ubicación tienda". -->
   <Teleport to="body">
@@ -285,6 +354,53 @@ onBeforeUnmount(() => {
   padding-block: var(--space-5) var(--space-7);
 }
 
+.catalog__layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+.catalog__sidebar-col {
+  position: sticky;
+  top: calc(var(--header-h) + 16px);
+  max-height: calc(100vh - var(--header-h) - 32px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.catalog__sidebar-col::-webkit-scrollbar {
+  width: 4px;
+}
+
+.catalog__sidebar-col::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 4px;
+}
+
+.catalog__main-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.mobile-filter-trigger {
+  display: none;
+}
+
+.mobile-filter-btn {
+  width: 100%;
+  gap: var(--space-2);
+  font-size: 0.9rem;
+}
+
+.mobile-filter-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
 .state {
   display: flex;
   flex-direction: column;
@@ -303,6 +419,20 @@ onBeforeUnmount(() => {
 
 .state--error {
   color: var(--danger);
+}
+
+@media (max-width: 960px) {
+  .catalog__layout {
+    grid-template-columns: 1fr;
+  }
+
+  .catalog__sidebar-col {
+    display: none;
+  }
+
+  .mobile-filter-trigger {
+    display: block;
+  }
 }
 
 @media (max-width: 860px) {
@@ -325,6 +455,71 @@ onBeforeUnmount(() => {
   .catalog {
     padding-block: var(--space-5);
   }
+}
+
+/* ── Mobile Filter Drawer ────────────────────────────────────────────────── */
+.mobile-filter-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+}
+
+.mobile-filter-drawer__backdrop {
+  position: absolute;
+  inset: 0;
+  background: var(--overlay);
+  backdrop-filter: blur(4px);
+}
+
+.mobile-filter-drawer__content {
+  position: relative;
+  width: 85%;
+  max-width: 340px;
+  height: 100%;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  z-index: 1;
+  box-shadow: var(--shadow-card);
+}
+
+.mobile-filter-drawer__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+
+.mobile-filter-drawer__title {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--cream);
+  margin: 0;
+}
+
+.mobile-filter-drawer__close {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  color: var(--charcoal);
+  cursor: pointer;
+  padding: 4px 8px;
+}
+
+.mobile-filter-drawer__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-4);
+}
+
+.mobile-filter-drawer__footer {
+  padding: var(--space-4);
+  border-top: 1px solid var(--border);
+  background: var(--surface-2);
 }
 
 /* ── Dialog de ubicación (móvil) ─────────────────────────────────────────── */

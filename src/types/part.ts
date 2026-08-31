@@ -9,6 +9,14 @@ export interface Category {
   created_at?: string
 }
 
+/** Marca de la pieza (STP, Wurtex, …). Tabla propia, FK parts.brand_id (0012). */
+export interface Brand {
+  id: string
+  name: string
+  slug: string
+  created_at?: string
+}
+
 export interface PartSpec {
   id: number
   part_id: string
@@ -23,6 +31,8 @@ export interface PartCompatibility {
   vehicle_model: string
   year_from: number | null
   year_to: number | null
+  /** Motor OPCIONAL (0011). null = aplica sin importar el motor. Ej. "1.6L". */
+  motor: string | null
 }
 
 export interface Part {
@@ -30,7 +40,7 @@ export interface Part {
   code: string
   name: string
   category_id: string | null
-  brand: string
+  brand_id: string | null
   origin_type: OriginType
   price: number
   availability: Availability
@@ -48,6 +58,7 @@ export interface Part {
   is_best_deal?: boolean | null
   created_at: string
   categories?: Category | null
+  brands?: Brand | null
   part_specs?: PartSpec[]
   part_compatibility?: PartCompatibility[]
 }
@@ -78,7 +89,7 @@ export interface PartInput {
   code: string
   name: string
   category_id: string | null
-  brand: string
+  brand_id: string | null
   origin_type: OriginType
   price: number
   availability: Availability
@@ -91,6 +102,12 @@ export interface PartInput {
 
 /** Campos escribibles de `categories` (sin id/created_at). */
 export interface CategoryInput {
+  name: string
+  slug: string
+}
+
+/** Campos escribibles de `brands` (sin id/created_at). */
+export interface BrandInput {
   name: string
   slug: string
 }
@@ -124,4 +141,6 @@ export interface CompatInput {
   vehicle_model: string
   year_from: number | null
   year_to: number | null
+  /** Motor opcional; vacío/"" → null al guardar. */
+  motor: string | null
 }

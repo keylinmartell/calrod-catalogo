@@ -1,3 +1,7 @@
+<script setup lang="ts">
+import { RouterLink } from 'vue-router'
+</script>
+
 <template>
   <footer class="footer">
     <div class="container footer__inner">
@@ -7,6 +11,11 @@
       <p class="footer__note">
         Repuestos CalRod — catálogo de piezas de auto.
       </p>
+      <nav class="footer__links">
+        <RouterLink to="/terminos" class="footer__link">Términos y Condiciones</RouterLink>
+        <span class="footer__sep" aria-hidden="true">·</span>
+        <RouterLink to="/privacidad" class="footer__link">Política de Privacidad</RouterLink>
+      </nav>
       <p class="footer__legal mono">
         © {{ new Date().getFullYear() }} CalRod
         <span class="footer__sep" aria-hidden="true">·</span>
@@ -62,6 +71,24 @@
   color: var(--charcoal);
   max-width: 52ch;
   font-size: 0.9rem;
+}
+
+.footer__links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+}
+
+.footer__link {
+  color: var(--blue-2);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.footer__link:hover {
+  text-decoration: underline;
 }
 
 .footer__legal {

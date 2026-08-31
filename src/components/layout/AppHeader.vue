@@ -1,14 +1,53 @@
 <script setup lang="ts">
-import { RouterLink, useRoute } from 'vue-router'
-import { computed } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { computed, ref, onBeforeUnmount } from 'vue'
+import { storeToRefs } from 'pinia'
 import SearchBar from '@/components/catalog/SearchBar.vue'
 import { useTheme } from '@/composables/useTheme'
+import { useAuthStore } from '@/stores/authStore'
+import { useAuthPanel } from '@/composables/useAuthPanel'
 
 const route = useRoute()
+const router = useRouter()
 // El buscador del header solo tiene sentido en el catálogo (donde filtra el store).
 const showSearch = computed(() => route.name === 'catalog')
 
 const { theme, toggleTheme } = useTheme()
+
+const auth = useAuthStore()
+const { isAuthenticated, isAdmin, profile } = storeToRefs(auth)
+const { openPanel } = useAuthPanel()
+
+// Menú de usuario (avatar → desplegable). Solo visible con sesión.
+const menuOpen = ref(false)
+function toggleMenu() {
+  menuOpen.value = !menuOpen.value
+}
+function closeMenu() {
+  menuOpen.value = false
+}
+
+// Inicial para el avatar: primera letra del correo, o "U" si aún no cargó.
+const initial = computed(() => (profile.value?.email?.[0] ?? 'U').toUpperCase())
+
+async function onSignOut() {
+  closeMenu()
+  await auth.signOut()
+  // Si estaba en el panel admin, lo devolvemos al catálogo.
+  if (route.name === 'admin') router.push('/')
+}
+
+function goAdmin() {
+  closeMenu()
+  router.push('/admin')
+}
+
+// Cerrar el menú al hacer click fuera.
+function onDocClick(e: MouseEvent) {
+  if (!(e.target as HTMLElement).closest('.header__user')) closeMenu()
+}
+document.addEventListener('click', onDocClick)
+onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 </script>
 
 <template>
@@ -59,6 +98,53 @@ const { theme, toggleTheme } = useTheme()
             <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
           </svg>
         </button>
+
+        <!-- Sin sesión: botón Acceder (abre el panel de login deslizante). -->
+        <button
+          v-if="!isAuthenticated"
+          type="button"
+          class="header__access"
+          @click="openPanel('login')"
+        >
+          Acceder
+        </button>
+
+        <!-- Con sesión: avatar con menú de usuario. -->
+        <div v-else class="header__user">
+          <button
+            type="button"
+            class="header__avatar"
+            :aria-expanded="menuOpen"
+            aria-haspopup="menu"
+            aria-label="Menú de usuario"
+            @click.stop="toggleMenu"
+          >
+            {{ initial }}
+          </button>
+
+          <div v-if="menuOpen" class="header__menu" role="menu">
+            <p class="header__menu-email" :title="profile?.email ?? ''">
+              {{ profile?.email ?? 'Mi cuenta' }}
+            </p>
+            <button
+              v-if="isAdmin"
+              type="button"
+              class="header__menu-item"
+              role="menuitem"
+              @click="goAdmin"
+            >
+              Panel de administración
+            </button>
+            <button
+              type="button"
+              class="header__menu-item header__menu-item--danger"
+              role="menuitem"
+              @click="onSignOut"
+            >
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
       </nav>
     </div>
   </header>
@@ -144,6 +230,93 @@ const { theme, toggleTheme } = useTheme()
 .header__theme svg {
   width: 18px;
   height: 18px;
+}
+
+/* Botón "Acceder": pill azul de marca. */
+.header__access {
+  display: inline-flex;
+  align-items: center;
+  height: 38px;
+  padding-inline: var(--space-4);
+  border-radius: 999px;
+  background: var(--blue);
+  color: #eceef2;
+  font-weight: 600;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+
+.header__access:hover {
+  background: var(--blue-2);
+}
+
+/* Menú de usuario: avatar redondo + desplegable. */
+.header__user {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.header__avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--blue);
+  color: #eceef2;
+  font-weight: 700;
+  font-size: 0.95rem;
+  border: 1px solid var(--border-strong);
+  transition: border-color 0.15s ease;
+}
+
+.header__avatar:hover {
+  border-color: var(--blue-2);
+}
+
+.header__menu {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  min-width: 220px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-2);
+  z-index: 30;
+}
+
+.header__menu-email {
+  padding: var(--space-2) var(--space-3);
+  font-size: 0.82rem;
+  color: var(--charcoal);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header__menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  color: var(--cream);
+  transition: background 0.15s ease;
+}
+
+.header__menu-item:hover {
+  background: var(--surface-2);
+}
+
+.header__menu-item--danger {
+  color: var(--danger);
 }
 
 /* Tablet/móvil: el buscador colapsa fuera del header (§6, va full-width en la vista). */

@@ -2,7 +2,7 @@
 import { useFilters } from '@/composables/useFilters'
 
 withDefaults(defineProps<{ placeholder?: string }>(), {
-  placeholder: 'Busca por nombre o código (ej. BR-4471-C)',
+  placeholder: 'Busca tus repuestos',
 })
 
 const { search, setSearch } = useFilters()

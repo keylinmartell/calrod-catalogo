@@ -1,14 +1,24 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import AppFooter from '@/components/layout/AppFooter.vue'
+import WhatsAppFab from '@/components/layout/WhatsAppFab.vue'
 import CategoryBar from '@/components/catalog/CategoryBar.vue'
 import AppLoader from '@/components/brand/AppLoader.vue'
+import AuthPanel from '@/components/auth/AuthPanel.vue'
+import { useAuthStore } from '@/stores/authStore'
 
 const route = useRoute()
 // La barra de categorías/sistemas solo tiene sentido en el catálogo.
 const showCategoryBar = computed(() => route.name === 'catalog')
+
+// Auth ahora es global (header, guard de admin, panel de acceso): resolvemos la
+// sesión guardada al arrancar la app, no solo al entrar al panel.
+const auth = useAuthStore()
+onMounted(() => {
+  auth.init()
+})
 </script>
 
 <template>
@@ -22,6 +32,8 @@ const showCategoryBar = computed(() => route.name === 'catalog')
     </main>
     <AppFooter />
   </div>
+  <AuthPanel />
+  <WhatsAppFab />
 </template>
 
 <style scoped>
