@@ -11,7 +11,6 @@ const {
   viewMode,
   setSearchInResults,
   setViewMode,
-  toggleCategory,
 } = useFilters()
 
 const currentCategoryName = computed(() => {

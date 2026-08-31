@@ -168,6 +168,12 @@ export const useCatalogStore = defineStore('catalog', {
       this.loadParts()
     },
 
+    /** Fija el motor (cadena vacía = cualquier motor). */
+    setMotor(value: string) {
+      this.motor = value
+      this.loadParts()
+    },
+
     clearFilters() {
       this.search = ''
       this.searchInResults = ''
