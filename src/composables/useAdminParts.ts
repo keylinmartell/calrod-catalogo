@@ -1,5 +1,11 @@
 import { supabase } from '@/services/supabase'
-import type { CompatInput, Part, PartInput, SpecInput } from '@/types/part'
+import type {
+  CompatInput,
+  Part,
+  PartImageDraft,
+  PartInput,
+  SpecInput,
+} from '@/types/part'
 
 const BUCKET = 'part-images'
 
@@ -16,6 +22,27 @@ function storagePathFromUrl(url?: string | null): string | null {
   if (i === -1) return null
   const rest = url.slice(i + marker.length)
   return decodeURIComponent(rest.split('?')[0]) || null
+}
+
+/**
+ * Carpeta de una pieza dentro del bucket, deducida de una de sus URLs públicas.
+ * Todas las fotos de una pieza viven en la misma carpeta (`<carpeta>/<archivo>`),
+ * así que con una URL cualquiera se sabe dónde están las demás.
+ *   …/part-images/BR-4471-C/9f3a…  →  "BR-4471-C"
+ */
+function folderOfUrl(url?: string | null): string | null {
+  const path = storagePathFromUrl(url)
+  if (!path) return null
+  const i = path.lastIndexOf('/')
+  return i > 0 ? path.slice(0, i) : null
+}
+
+/** Vacía una carpeta del bucket. No-op si no hay carpeta o si ya está vacía. */
+async function removeFolder(folder: string | null): Promise<void> {
+  if (!folder) return
+  const { data: items } = await supabase.storage.from(BUCKET).list(folder)
+  if (!items || !items.length) return
+  await supabase.storage.from(BUCKET).remove(items.map((f) => `${folder}/${f.name}`))
 }
 
 /**
@@ -80,16 +107,15 @@ export function useAdminParts() {
   }
 
   async function deletePart(id: string, imageUrl?: string | null): Promise<void> {
-    // specs y compatibilidad caen por `on delete cascade` (0001_init.sql).
+    // specs, compatibilidad y fotos (part_images, 0020) caen por
+    // `on delete cascade`.
     const { error } = await supabase.from('parts').delete().eq('id', id)
     if (error) throw error
 
-    // La foto NO cae por cascade (vive en Storage, no en la tabla): la borramos
-    // aparte para no dejarla huérfana en el bucket.
-    const path = storagePathFromUrl(imageUrl)
-    if (path) {
-      await supabase.storage.from(BUCKET).remove([path])
-    }
+    // Las fotos NO caen por cascade (viven en Storage, no en la tabla). Basta
+    // una URL cualquiera de la pieza para deducir su carpeta y vaciarla entera,
+    // así una pieza con cinco fotos se limpia sin traer la galería completa.
+    await removeFolder(folderOfUrl(imageUrl))
   }
 
   /**
@@ -119,19 +145,17 @@ export function useAdminParts() {
     }
 
     const cleanCompat = compat
-      .filter((c) => c.vehicle_brand.trim() && c.vehicle_model.trim())
+      // Cada fila debe especificar al menos la marca de auto (o modelo/motor)
+      .filter((c) => c.vehicle_brand_id || c.vehicle_model_id || c.motor_id)
       .map((c) => ({
         part_id: partId,
-        vehicle_brand: c.vehicle_brand.trim(),
-        vehicle_model: c.vehicle_model.trim(),
-        // Un <input type="number"> vacío da "" (o NaN con .number), y Postgres
-        // rechaza "" para una columna integer (error 22P02). Los años son
-        // opcionales: normalizamos vacío/NaN a null.
+        vehicle_brand_id: c.vehicle_brand_id || null,
+        vehicle_model_id: c.vehicle_model_id || null,
+        motor_id: c.motor_id || null,
         year_from: toYearOrNull(c.year_from),
         year_to: toYearOrNull(c.year_to),
-        // Motor opcional: texto vacío → null (aplica sin importar el motor).
-        motor: c.motor?.trim() || null,
       }))
+
     if (cleanCompat.length) {
       const { error } = await supabase.from('part_compatibility').insert(cleanCompat)
       if (error) throw error
@@ -139,52 +163,91 @@ export function useAdminParts() {
   }
 
   /**
-   * uploadImage — sube el archivo al bucket `part-images` y devuelve la URL
-   * pública. Para NO dejar fotos huérfanas:
-   *  1. Borra todo lo que haya en la carpeta de la pieza (`<code>/…`), sin
-   *     importar con qué nombre/extensión se subió antes (foto.jpg, photo, …).
-   *  2. Si al editar cambió el código de la pieza, la carpeta destino cambia, así
-   *     que además borramos el objeto de la URL anterior (previousUrl) esté donde
-   *     esté.
-   *  3. Sube la nueva al path fijo `<code>/photo` con upsert.
+   * saveGallery — sube las fotos nuevas y devuelve la lista ORDENADA de URLs
+   * finales (la primera es la principal).
+   *
+   * `drafts` mezcla fotos que ya estaban en el bucket con archivos recién
+   * elegidos; el orden del array ES el orden de la galería.
+   *
+   * `folderKey` es la carpeta dentro del bucket: el código de la pieza cuando lo
+   * tiene y, desde que el código es opcional (0015), su id o un uuid nuevo cuando
+   * no. Nunca un valor compartido: dos piezas sin código en la misma carpeta se
+   * pisarían las fotos.
+   *
+   * Para NO dejar fotos huérfanas:
+   *  1. Cada archivo nuevo sube a un path ÚNICO (`<carpeta>/<uuid>`). Con varias
+   *     fotos por pieza un nombre fijo se sobrescribiría a sí mismo, y un path
+   *     nuevo hace innecesario el cache-buster: la URL cambia sola.
+   *  2. Si al editar cambió la carpeta destino (p. ej. le pusieron código a una
+   *     pieza que no lo tenía), se vacía la carpeta anterior completa.
+   *  3. Al final se borra del bucket todo lo que quedó en la carpeta y ya no
+   *     aparece en la galería — las fotos que el admin quitó del formulario.
    */
-  async function uploadImage(
-    file: File,
-    partCode: string,
+  async function saveGallery(
+    drafts: PartImageDraft[],
+    folderKey: string,
     previousUrl?: string | null,
-  ): Promise<string> {
-    const safeCode = partCode.trim().replace(/[^a-zA-Z0-9-_]/g, '-') || 'pieza'
-    const path = `${safeCode}/photo`
+  ): Promise<string[]> {
+    const safeKey = folderKey.trim().replace(/[^a-zA-Z0-9-_]/g, '-') || 'pieza'
 
-    // (1) Vacía la carpeta actual de la pieza.
-    const { data: existing } = await supabase.storage
-      .from('part-images')
-      .list(safeCode)
-    if (existing && existing.length) {
-      await supabase.storage
-        .from('part-images')
-        .remove(existing.map((f) => `${safeCode}/${f.name}`))
+    // (1) Sube lo nuevo, conservando el orden del formulario.
+    const urls: string[] = []
+    for (const draft of drafts) {
+      if (!draft.file) {
+        if (draft.url) urls.push(draft.url)
+        continue
+      }
+      const path = `${safeKey}/${crypto.randomUUID()}`
+      const { error } = await supabase.storage
+        .from(BUCKET)
+        .upload(path, draft.file, { upsert: true, contentType: draft.file.type })
+      if (error) throw error
+      const { data } = supabase.storage.from(BUCKET).getPublicUrl(path)
+      urls.push(data.publicUrl)
     }
 
-    // (2) Borra la foto anterior si vivía en otra ruta (p. ej. el código cambió).
-    const prevPath = storagePathFromUrl(previousUrl)
-    if (prevPath && prevPath !== path) {
-      await supabase.storage.from('part-images').remove([prevPath])
+    // (2) La carpeta anterior, si la pieza se mudó de carpeta.
+    const previousFolder = folderOfUrl(previousUrl)
+    if (previousFolder && previousFolder !== safeKey) {
+      await removeFolder(previousFolder)
     }
 
-    // (3) Sube la nueva.
-    const { error } = await supabase.storage
-      .from('part-images')
-      .upload(path, file, { upsert: true, contentType: file.type })
-    if (error) throw error
+    // (3) Huérfanas: lo que sigue en la carpeta y ya no está en la galería.
+    const keep = new Set(
+      urls.map((u) => storagePathFromUrl(u)).filter((p): p is string => p !== null),
+    )
+    const { data: existing } = await supabase.storage.from(BUCKET).list(safeKey)
+    const orphans = (existing ?? [])
+      .map((f) => `${safeKey}/${f.name}`)
+      .filter((path) => !keep.has(path))
+    if (orphans.length) {
+      await supabase.storage.from(BUCKET).remove(orphans)
+    }
 
-    // Cache-buster: la URL pública es estable (mismo path), así que sin esto el
-    // navegador seguiría mostrando la foto vieja cacheada tras reemplazarla.
-    const { data } = supabase.storage.from('part-images').getPublicUrl(path)
-    return `${data.publicUrl}?v=${Date.now()}`
+    return urls
   }
 
-  return { createPart, updatePart, deletePart, uploadImage }
+  /**
+   * Reemplaza la galería de la pieza (0020) por la lista de URLs recibida, en ese
+   * orden: `sort_order` 0 es la principal. Mismo criterio que replaceChildren —
+   * borrar e insertar en vez de reconciliar fila por fila, que con un puñado de
+   * fotos por pieza no aporta nada.
+   *
+   * Ojo: `parts.image_url` NO se toca aquí. Es la principal denormalizada y la
+   * escribe el propio UPDATE/INSERT de la pieza (el formulario pone urls[0]),
+   * así la fila y su galería se guardan en la misma operación.
+   */
+  async function replaceImages(partId: string, urls: string[]): Promise<void> {
+    const del = await supabase.from('part_images').delete().eq('part_id', partId)
+    if (del.error) throw del.error
+    if (!urls.length) return
+
+    const rows = urls.map((url, i) => ({ part_id: partId, url, sort_order: i }))
+    const { error } = await supabase.from('part_images').insert(rows)
+    if (error) throw error
+  }
+
+  return { createPart, updatePart, deletePart, saveGallery, replaceImages }
 }
 
 /** Convierte un Part cargado de la BD en el PartInput que edita el formulario. */
@@ -202,5 +265,11 @@ export function toPartInput(part: Part): PartInput {
     image_url: part.image_url,
     discount_amount: part.discount_amount ?? null,
     is_best_deal: part.is_best_deal ?? false,
+    wholesale_price: part.wholesale_price ?? null,
+    // La columna es NOT NULL con default 5 (0014); una pieza vieja sin valor
+    // cargado en memoria vuelve al mismo 5 en vez de mandar null.
+    wholesale_min_qty: part.wholesale_min_qty ?? 5,
+    // Misma idea con la existencia (0018): NOT NULL con default 0 en la BD.
+    stock_qty: part.stock_qty ?? 0,
   }
 }

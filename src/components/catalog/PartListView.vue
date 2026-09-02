@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { Part } from '@/types/part'
+import { motorName, vehicleBrandName, vehicleModelName } from '@/types/part'
 import PartListItem from './PartListItem.vue'
 
 const props = defineProps<{
@@ -19,9 +20,10 @@ const groupedParts = computed<GroupedParts[]>(() => {
     const compats = part.part_compatibility ?? []
     if (compats.length > 0) {
       for (const c of compats) {
-        const brand = (c.vehicle_brand || '').toUpperCase()
-        const model = (c.vehicle_model || '').toUpperCase()
-        const motor = c.motor ? ` ${c.motor.toUpperCase()}` : ''
+        const brand = vehicleBrandName(c).toUpperCase()
+        const model = vehicleModelName(c).toUpperCase()
+        const motorRaw = motorName(c)
+        const motor = motorRaw ? ` ${motorRaw.toUpperCase()}` : ''
         const years =
           c.year_from || c.year_to
             ? ` (${c.year_from ?? ''} - ${c.year_to ?? 'PRESENTE'})`

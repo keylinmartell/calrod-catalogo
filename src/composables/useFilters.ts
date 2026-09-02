@@ -1,43 +1,7 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useCatalogStore } from '@/stores/catalogStore'
-
-// Lista de marcas vehiculares habituales en el mercado para garantizar un catálogo completo
-const COMMON_VEHICLE_BRANDS = [
-  'Asia',
-  'Audi',
-  'Byd',
-  'Changan',
-  'Chery',
-  'Chevrolet',
-  'Citroen',
-  'Daewoo',
-  'Daihatsu',
-  'Dodge',
-  'Fiat',
-  'Ford',
-  'Geely',
-  'Great Wall',
-  'Haval',
-  'Honda',
-  'Hyundai',
-  'JAC',
-  'Jeep',
-  'Kia',
-  'Mazda',
-  'Mercedes-Benz',
-  'MG',
-  'Mitsubishi',
-  'Nissan',
-  'Peugeot',
-  'Renault',
-  'Seat',
-  'Skoda',
-  'Subaru',
-  'Suzuki',
-  'Toyota',
-  'Volkswagen',
-]
+import { motorName, vehicleBrandName, vehicleModelName } from '@/types/part'
 
 /**
  * useFilters — arma y expone el estado de los filtros (name/code, categoría,
@@ -57,6 +21,7 @@ export function useFilters() {
     motor,
     categories,
     brands,
+    vehicleBrands,
     parts,
     allVehicles,
     loading,
@@ -138,21 +103,25 @@ export function useFilters() {
   })
 
   // ── Facetas de vehículo completas (incluso antes de filtrar) ────────────────
+  // Las marcas salen del nomenclador que administra el panel (0013), no de una
+  // lista fija: lo que el admin registra es exactamente lo que ofrece el filtro.
+  // Si el nomenclador no cargó (red caída), caemos a las marcas presentes en los
+  // datos ya traídos para no dejar el filtro vacío.
   const allVehicleBrandOptions = computed<string[]>(() => {
+    const fromNomenclador = vehicleBrands.value.map((b) => b.name)
+    if (fromNomenclador.length) {
+      return [...fromNomenclador].sort((a, b) => a.localeCompare(b))
+    }
+
     const set = new Set<string>()
-    // 1. De la BD cargada
     for (const v of allVehicles.value) {
       if (v.vehicle_brand) set.add(v.vehicle_brand)
     }
-    // 2. De las piezas actuales
     for (const p of parts.value) {
       for (const c of p.part_compatibility ?? []) {
-        if (c.vehicle_brand) set.add(c.vehicle_brand)
+        const name = vehicleBrandName(c)
+        if (name) set.add(name)
       }
-    }
-    // 3. Fallback de marcas comunes si no hay muchas
-    for (const cb of COMMON_VEHICLE_BRANDS) {
-      set.add(cb)
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b))
   })
@@ -169,8 +138,9 @@ export function useFilters() {
     // De parts
     for (const p of parts.value) {
       for (const c of p.part_compatibility ?? []) {
-        if (vb && c.vehicle_brand?.toLowerCase() !== vb) continue
-        if (c.vehicle_model) set.add(c.vehicle_model)
+        if (vb && vehicleBrandName(c).toLowerCase() !== vb) continue
+        const model = vehicleModelName(c)
+        if (model) set.add(model)
       }
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b))
@@ -181,7 +151,8 @@ export function useFilters() {
     const set = new Set<string>()
     for (const p of parts.value) {
       for (const c of p.part_compatibility ?? []) {
-        if (c.motor) set.add(c.motor)
+        const m = motorName(c)
+        if (m) set.add(m)
       }
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b))
@@ -198,9 +169,9 @@ export function useFilters() {
       const matchDesc = p.description?.toLowerCase().includes(q)
       const matchCompat = p.part_compatibility?.some(
         (c) =>
-          c.vehicle_brand?.toLowerCase().includes(q) ||
-          c.vehicle_model?.toLowerCase().includes(q) ||
-          c.motor?.toLowerCase().includes(q),
+          vehicleBrandName(c).toLowerCase().includes(q) ||
+          vehicleModelName(c).toLowerCase().includes(q) ||
+          motorName(c).toLowerCase().includes(q),
       )
       return matchName || matchCode || matchBrand || matchDesc || matchCompat
     })

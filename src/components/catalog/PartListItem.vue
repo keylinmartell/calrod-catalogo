@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import type { Part } from '@/types/part'
 import { ORIGIN_LABELS } from '@/types/part'
+import { partWholesale } from '@/composables/usePartPricing'
 
 const props = defineProps<{
   part: Part
@@ -41,6 +42,20 @@ const offer = computed(() => {
 })
 
 const priceFmt = computed(() => money.format(props.part.price))
+
+// Mayorista (0014). Como esta fila ya trae selector de cantidad, el precio
+// grande sigue a la cantidad elegida: al llegar al mínimo mayorista se muestra
+// ese precio por unidad, no el del detalle.
+const wholesale = computed(() => partWholesale(props.part))
+
+const appliesWholesale = computed(
+  () => !!wholesale.value && quantity.value >= wholesale.value.minQty,
+)
+
+const unitPriceFmt = computed(() => {
+  if (appliesWholesale.value && wholesale.value) return wholesale.value.priceFmt
+  return offer.value ? offer.value.finalFmt : priceFmt.value
+})
 
 // Rango de años de compatibilidad para el display
 const compatYears = computed(() => {
@@ -102,14 +117,25 @@ const originName = computed(() => {
     <!-- Precios y descuento -->
     <div class="list-item__pricing">
       <div class="price-row">
-        <span class="price-main">
-          {{ offer ? offer.finalFmt : priceFmt }}
+        <span class="price-main">{{ unitPriceFmt }}</span>
+        <span class="price-tax">Al cambio CUP</span>
+        <span v-if="offer && !appliesWholesale" class="price-badge">
+          {{ offer.pct }}
         </span>
-        <span class="price-tax">IVA Incl.</span>
-        <span v-if="offer" class="price-badge">{{ offer.pct }}</span>
+        <span v-if="appliesWholesale" class="price-badge price-badge--wholesale">
+          MAYORISTA
+        </span>
       </div>
-      <div v-if="offer" class="price-original mono">
+      <div v-if="offer && !appliesWholesale" class="price-original mono">
         {{ offer.originalFmt }} IVA Incl.
+      </div>
+      <div v-if="wholesale" class="price-wholesale mono">
+        <template v-if="appliesWholesale">
+          Precio mayorista por {{ quantity }} u.
+        </template>
+        <template v-else>
+          Mayorista <b>{{ wholesale.priceFmt }}</b> · {{ wholesale.qtyLabel }}
+        </template>
       </div>
     </div>
 
@@ -303,6 +329,23 @@ const originName = computed(() => {
   font-size: 0.78rem;
   color: var(--charcoal);
   text-decoration: line-through;
+}
+
+/* Mayorista: mismo tono que el badge de oferta, sin tachado (no es un "antes"). */
+.price-badge--wholesale {
+  background: rgba(46, 111, 224, 0.18);
+  letter-spacing: 0.04em;
+}
+
+.price-wholesale {
+  font-size: 0.76rem;
+  color: var(--charcoal);
+  margin-top: 2px;
+}
+
+.price-wholesale b {
+  color: var(--blue-2);
+  font-weight: 700;
 }
 
 /* Acciones */

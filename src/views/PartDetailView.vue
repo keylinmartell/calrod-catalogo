@@ -3,8 +3,17 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useParts } from '@/composables/useParts'
 import { useAppLoading } from '@/composables/useAppLoading'
+import { money, partWholesale, retailPrice } from '@/composables/usePartPricing'
 import type { Part } from '@/types/part'
-import { AVAILABILITY_LABELS, ORIGIN_LABELS } from '@/types/part'
+import {
+  AVAILABILITY_LABELS,
+  ORIGIN_LABELS,
+  motorName,
+  partGallery,
+  vehicleBrandName,
+  vehicleModelName,
+} from '@/types/part'
+import PartGallery from '@/components/part-detail/PartGallery.vue'
 import PartSpecSheet from '@/components/part-detail/PartSpecSheet.vue'
 import CompatibilityList from '@/components/part-detail/CompatibilityList.vue'
 import GearSpinner from '@/components/brand/GearSpinner.vue'
@@ -18,31 +27,60 @@ const part = ref<Part | null>(null)
 const loading = ref(true)
 const error = ref<string | null>(null)
 
-const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'USD' })
+/** Fotos ordenadas para la galería; [] si la pieza no tiene ninguna. */
+const images = computed(() => (part.value ? partGallery(part.value) : []))
 
-// Oferta: mismo modelo que PartCard. `price` es el precio NORMAL; si hay
-// discount_amount válido (>0 y < price), el final es `price - descuento`.
-const offer = computed(() => {
+// Precio: las reglas viven en usePartPricing, aquí solo se formatean. `price` es
+// el NORMAL y el descuento un monto fijo (0010), así que el tachado solo aparece
+// cuando de verdad hay ahorro.
+const price = computed(() => {
   const p = part.value
   if (!p) return null
-  const save = p.discount_amount
-  if (!save || save <= 0) return null
-  const final = p.price - save
-  if (final <= 0) return null
+  const final = retailPrice(p)
   return {
     finalFmt: money.format(final),
     originalFmt: money.format(p.price),
-    saveFmt: money.format(save),
+    saveFmt: money.format(p.price - final),
+    hasOffer: final < p.price,
   }
 })
 
-const priceFmt = computed(() =>
-  part.value ? money.format(part.value.price) : '',
-)
+const wholesale = computed(() => (part.value ? partWholesale(part.value) : null))
 
-const availabilityDotClass = computed(() =>
-  part.value ? `dot--${part.value.availability}` : '',
-)
+/** Primera compatibilidad en una línea: "Toyota Corolla · 1.8L (2015–2020)". */
+const compatSummary = computed(() => {
+  const rows = part.value?.part_compatibility ?? []
+  const first = rows[0]
+  if (!first) return null
+
+  const name = [vehicleBrandName(first), vehicleModelName(first)]
+    .filter(Boolean)
+    .join(' ')
+  const motor = motorName(first)
+  const from = first.year_from
+  const to = first.year_to
+  const years = from && to ? `${from}–${to}` : from ? `${from}+` : to ? `hasta ${to}` : ''
+
+  return {
+    label: [name, motor, years ? `(${years})` : '']
+      .filter(Boolean)
+      .join(' · ')
+      .replace(' · (', ' ('),
+    rest: rows.length - 1,
+  }
+})
+
+/** Unidades en existencia (0018); null cuando no hay nada que anunciar. */
+const stock = computed(() => {
+  const q = part.value?.stock_qty
+  return typeof q === 'number' && q > 0 ? q : null
+})
+
+function goToCompat() {
+  document
+    .getElementById('compatibilidad')
+    ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
 
 async function load(id: string) {
   loading.value = true
@@ -95,79 +133,102 @@ watch(
     </div>
 
     <article v-else-if="part" class="sheet">
-      <!-- ---------- MEDIA ---------- -->
+      <!-- ---------- FOTOS ---------- -->
       <div class="sheet__media">
-        <div class="media-frame">
-          <span class="corner tl"></span><span class="corner tr"></span>
-          <span class="corner bl"></span><span class="corner br"></span>
-          <img
-            v-if="part.image_url"
-            :src="part.image_url"
-            :alt="part.name"
-            class="sheet__img"
-          />
-          <div v-else class="sheet__img sheet__img--empty" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="var(--charcoal)" stroke-width="1.4">
-              <rect x="3" y="5" width="18" height="14" rx="2"/>
-              <circle cx="8.5" cy="10" r="1.6"/>
-              <path d="M21 15l-5-4-4.5 4L8 12l-5 5"/>
-            </svg>
-            <span class="mono">Foto próximamente</span>
-          </div>
-        </div>
+        <PartGallery :images="images" :name="part.name" />
       </div>
 
-      <!-- ---------- FICHA (tarjeta de compra) ---------- -->
+      <!-- ---------- INFO ---------- -->
       <div class="sheet__info">
-        <div class="info-card">
-          <div class="sheet__badges">
-            <span v-if="part.categories" class="pill pill--category">
-              {{ part.categories.name }}
-            </span>
-            <span class="pill pill--origin">{{ ORIGIN_LABELS[part.origin_type] }}</span>
+        <div class="info__top">
+          <span class="stock-chip" :class="`stock-chip--${part.availability}`">
+            <span class="stock-chip__dot"></span>
+            {{ AVAILABILITY_LABELS[part.availability] }}
+            <span v-if="stock" class="stock-chip__qty mono">· {{ stock }} u.</span>
+          </span>
+          <span v-if="part.code" class="code mono">{{ part.code }}</span>
+        </div>
+
+        <h1 class="name">{{ part.name }}</h1>
+        <p v-if="part.description" class="tagline">{{ part.description }}</p>
+
+        <!-- Datos de la pieza: filas etiqueta/valor, sin caja alrededor. -->
+        <dl class="facts">
+          <div v-if="part.brands" class="fact">
+            <dt>Marca</dt>
+            <dd>{{ part.brands.name }}</dd>
           </div>
-
-          <h1 class="sheet__name">{{ part.name }}</h1>
-
-          <div class="sheet__meta mono">
-            <span>Núm. de parte <b>{{ part.code }}</b></span>
-            <span v-if="part.brands" class="meta-sep">·</span>
-            <span v-if="part.brands">{{ part.brands.name }}</span>
+          <div class="fact">
+            <dt>Tipo</dt>
+            <dd>{{ ORIGIN_LABELS[part.origin_type] }}</dd>
           </div>
-
-          <div class="price-row">
-            <div class="price-box">
-              <span v-if="offer" class="price-was mono">{{ offer.originalFmt }}</span>
-              <span class="sheet__price mono">{{ offer ? offer.finalFmt : priceFmt }}</span>
-              <span v-if="offer" class="price-save">Ahorras {{ offer.saveFmt }}</span>
-            </div>
-            <span class="availability" :class="availabilityDotClass">
-              <span class="dot"></span>
-              {{ AVAILABILITY_LABELS[part.availability] }}
-            </span>
+          <div v-if="part.categories" class="fact">
+            <dt>Categoría</dt>
+            <dd>{{ part.categories.name }}</dd>
           </div>
+          <div v-if="part.material" class="fact">
+            <dt>Material</dt>
+            <dd>{{ part.material }}</dd>
+          </div>
+        </dl>
 
-          <p v-if="part.description" class="sheet__desc">{{ part.description }}</p>
-
-          <!-- Fase 2: aquí entra "Agregar al carrito" (slot reservado, deshabilitado por ahora). -->
-          <button class="btn btn--cta" disabled>
-            Compra en línea próximamente
+        <!-- Compatibilidad resumida; el resto se lee en la sección de abajo. -->
+        <p v-if="compatSummary" class="compat-teaser">
+          <span class="compat-teaser__label">Compatible con</span>
+          <span class="compat-teaser__value">{{ compatSummary.label }}</span>
+          <button
+            v-if="compatSummary.rest > 0"
+            type="button"
+            class="compat-teaser__more"
+            @click="goToCompat"
+          >
+            y {{ compatSummary.rest }} más
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
           </button>
+        </p>
+
+        <!-- Precio: la única zona con líneas, que es donde de verdad ayudan. -->
+        <div v-if="price" class="price">
+          <div class="price__main">
+            <span class="price__now mono">{{ price.finalFmt }}</span>
+            <template v-if="price.hasOffer">
+              <span class="price__was mono">{{ price.originalFmt }}</span>
+              <span class="price__save">Ahorras {{ price.saveFmt }}</span>
+            </template>
+          </div>
+          <p v-if="wholesale" class="price__wholesale">
+            <b class="mono">{{ wholesale.priceFmt }}</b> por unidad desde
+            {{ wholesale.minQty }} u.
+            <span class="price__wholesale-save">(−{{ wholesale.saveFmt }} c/u)</span>
+          </p>
         </div>
 
-        <div class="sheet__sections">
-          <PartSpecSheet
-            :specs="part.part_specs ?? []"
-            :material="part.material"
-          />
-          <CompatibilityList :items="part.part_compatibility ?? []" />
-        </div>
+        <!-- Fase 2: aquí entra "Agregar al carrito". -->
+        <button class="btn btn--cta" disabled>Compra en línea próximamente</button>
+      </div>
+
+      <!-- ---------- DETALLE TÉCNICO ---------- -->
+      <div class="sheet__tech">
+        <PartSpecSheet :specs="part.part_specs ?? []" :material="part.material" />
+        <CompatibilityList
+          id="compatibilidad"
+          :items="part.part_compatibility ?? []"
+        />
       </div>
     </article>
   </div>
 </template>
 
 <style scoped>
+/*
+ * Ficha sin cajas anidadas. Antes cada zona era un rectángulo con borde (foto,
+ * compra, especificaciones, compatibilidad) y encima cada compatibilidad traía
+ * su propia cajita: la página se leía como un formulario. Ahora la jerarquía la
+ * dan el espacio, el tamaño del texto y unas pocas líneas finas donde separar de
+ * verdad aporta — el precio y el arranque del bloque técnico.
+ */
 .detail {
   padding-block: var(--space-5) var(--space-8);
 }
@@ -183,149 +244,165 @@ watch(
 .breadcrumb a { color: var(--blue-2); }
 .breadcrumb a:hover { text-decoration: underline; text-underline-offset: 3px; }
 
+/* Dos columnas arriba (fotos | compra) y el bloque técnico cruzando ambas. */
 .sheet {
   display: grid;
-  grid-template-columns: 1fr 1.05fr;
-  gap: var(--space-7);
+  grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
+  column-gap: var(--space-7);
+  row-gap: var(--space-8);
   align-items: start;
 }
 
-/* ---------- MEDIA con esquinas HUD ---------- */
-.sheet__media { position: sticky; top: calc(var(--header-h) + var(--space-4)); }
-
-.media-frame {
-  position: relative;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  padding: var(--space-6);
-}
-.corner { position: absolute; width: 16px; height: 16px; border: 1.5px solid rgba(46,111,224,0.55); z-index: 2; }
-.corner.tl { top: 10px; left: 10px; border-right: none; border-bottom: none; }
-.corner.tr { top: 10px; right: 10px; border-left: none; border-bottom: none; }
-.corner.bl { bottom: 10px; left: 10px; border-right: none; border-top: none; }
-.corner.br { bottom: 10px; right: 10px; border-left: none; border-top: none; }
-
-/* Igual que PartCard: caja cuadrada + object-fit contain para que la pieza se
-   vea completa (nunca recortada), "flotando" con una sombra suave. */
-.sheet__img {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  object-fit: contain;
-  object-position: center;
-  display: block;
-  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35));
-}
-.sheet__img--empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  color: var(--charcoal);
-  font-size: 0.8rem;
+.sheet__media {
+  position: sticky;
+  top: calc(var(--header-h) + var(--space-4));
 }
 
-/* ---------- FICHA / tarjeta de compra ---------- */
-.info-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-6);
+.sheet__info {
+  padding-top: var(--space-2);
 }
 
-.sheet__badges {
-  display: flex;
-  gap: var(--space-2);
-  margin-bottom: var(--space-4);
-}
-.pill {
-  padding: 4px 12px;
-  border-radius: 999px;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  font-family: var(--font-display);
-}
-.pill--origin { background: var(--blue); color: #eceef2; }
-.pill--category {
-  background: var(--surface-2);
-  border: 1px solid var(--border-strong);
-  color: var(--blue-2);
-}
-
-.sheet__name {
-  font-size: clamp(1.5rem, 2.6vw, 2rem);
-  font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-}
-
-.sheet__meta {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  color: var(--charcoal);
-  font-size: 0.8rem;
-  margin-top: var(--space-3);
-}
-.sheet__meta b { color: var(--cream); font-weight: 500; }
-.meta-sep { opacity: 0.5; }
-
-.price-row {
+/* ---------- cabecera de la info ---------- */
+.info__top {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.stock-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  /* currentColor tiñe fondo y punto: un solo color por estado, sin repetirlo. */
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+.stock-chip__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.stock-chip__qty { font-weight: 500; opacity: 0.85; }
+.stock-chip--disponible { color: var(--ok); }
+.stock-chip--stock_bajo { color: var(--warn); }
+.stock-chip--agotado    { color: var(--danger); }
+
+.code {
+  font-size: 0.76rem;
+  color: var(--charcoal);
+  letter-spacing: 0.06em;
+}
+
+.name {
+  font-size: clamp(1.55rem, 2.7vw, 2.15rem);
+  font-weight: 800;
+  letter-spacing: -0.022em;
+  line-height: 1.12;
+}
+
+.tagline {
+  margin-top: var(--space-3);
+  color: var(--text-dim);
+  font-size: 0.95rem;
+  line-height: 1.55;
+  max-width: 54ch;
+}
+
+/* ---------- datos ---------- */
+.facts {
+  display: grid;
+  gap: 9px;
   margin-top: var(--space-5);
-  padding-top: var(--space-4);
-  border-top: 1px dashed var(--border);
 }
-.price-box {
+.fact {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  gap: var(--space-2);
+  align-items: baseline;
+  font-size: 0.86rem;
 }
-.price-was {
-  font-size: 0.9rem;
+.fact dt {
+  color: var(--charcoal);
+  margin: 0;
+  min-width: 82px;
+}
+.fact dd {
+  color: var(--cream);
+  margin: 0;
+  font-weight: 500;
+}
+
+/* ---------- compatibilidad resumida ---------- */
+.compat-teaser {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  font-size: 0.86rem;
+}
+.compat-teaser__label { color: var(--charcoal); }
+.compat-teaser__value { color: var(--blue-2); font-weight: 600; }
+.compat-teaser__more {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--charcoal);
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.compat-teaser__more:hover { color: var(--cream); }
+
+/* ---------- precio ---------- */
+.price {
+  margin-top: var(--space-5);
+  padding-block: var(--space-4);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.price__main {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.price__now {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--cream);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.price__was {
+  font-size: 0.95rem;
   color: var(--charcoal);
   text-decoration: line-through;
 }
-.sheet__price {
-  font-size: 1.7rem;
-  font-weight: 700;
-  color: var(--blue-2);
-  line-height: 1.1;
-}
-.price-save {
-  font-size: 0.78rem;
-  font-weight: 600;
+.price__save {
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--orange) 16%, transparent);
   color: var(--orange-2);
+  font-size: 0.74rem;
+  font-weight: 700;
 }
-
-.availability {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.78rem;
-  font-family: var(--font-mono, monospace);
+.price__wholesale {
+  margin-top: var(--space-3);
+  font-size: 0.82rem;
+  color: var(--text-dim);
 }
-.availability .dot { width: 7px; height: 7px; border-radius: 50%; }
-.dot--disponible .dot { background: var(--ok); box-shadow: 0 0 0 3px rgba(107,191,123,0.18); }
-.dot--stock_bajo .dot { background: var(--warn); box-shadow: 0 0 0 3px rgba(240,183,63,0.18); }
-.dot--agotado    .dot { background: var(--danger); box-shadow: 0 0 0 3px rgba(217,92,74,0.18); }
-.dot--disponible { color: var(--ok); }
-.dot--stock_bajo { color: var(--warn); }
-.dot--agotado    { color: var(--danger); }
-
-.sheet__desc {
-  color: var(--cream);
-  opacity: 0.82;
-  margin-top: var(--space-4);
-  line-height: 1.55;
-  max-width: 56ch;
-}
+.price__wholesale b { color: var(--cream); }
+.price__wholesale-save { color: var(--ok); }
 
 .btn--cta {
   width: 100%;
@@ -339,11 +416,20 @@ watch(
   cursor: not-allowed;
 }
 
-.sheet__sections {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-  margin-top: var(--space-5);
+/* ---------- bloque técnico ---------- */
+/* Cruza las dos columnas y se divide en dos: la línea del centro es el único
+   separador, en vez de dos tarjetas con borde completo. */
+.sheet__tech {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-7);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--border);
+}
+.sheet__tech > :last-child {
+  padding-left: var(--space-7);
+  border-left: 1px solid var(--border);
 }
 
 /* ---------- estados ---------- */
@@ -369,8 +455,22 @@ watch(
   color: var(--cream);
 }
 
-@media (max-width: 860px) {
-  .sheet { grid-template-columns: 1fr; gap: var(--space-5); }
+@media (max-width: 980px) {
+  .sheet {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--space-6);
+  }
   .sheet__media { position: static; }
+  .sheet__tech {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-6);
+  }
+  /* En una columna la línea vertical no separa nada: pasa a horizontal. */
+  .sheet__tech > :last-child {
+    padding-left: 0;
+    border-left: none;
+    padding-top: var(--space-6);
+    border-top: 1px solid var(--border);
+  }
 }
 </style>

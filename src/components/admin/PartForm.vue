@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useAdminParts, toPartInput } from '@/composables/useAdminParts'
 import { useParts } from '@/composables/useParts'
+import { money } from '@/composables/usePartPricing'
 import {
   AVAILABILITY_LABELS,
   ORIGIN_LABELS,
+  partGallery,
 } from '@/types/part'
 import type {
   Availability,
@@ -13,26 +15,44 @@ import type {
   CompatInput,
   OriginType,
   Part,
+  PartImageDraft,
   PartInput,
   SpecInput,
+  VehicleBrand,
+  VehicleModel,
+  VehicleMotor,
 } from '@/types/part'
 
 const props = defineProps<{ part: Part | null }>()
 const emit = defineEmits<{ saved: []; cancel: [] }>()
 
-const { createPart, updatePart, uploadImage } = useAdminParts()
-const { fetchCategories, fetchBrands } = useParts()
+const { createPart, updatePart, saveGallery, replaceImages } = useAdminParts()
+const { fetchCategories, fetchBrands, fetchVehicleBrands, fetchVehicleModels, fetchVehicleMotors } =
+  useParts()
 
 const isEdit = props.part !== null
 
-// Categorías y marcas para los selects (cargadas de la BD, ya no hardcodeadas).
+// Categorías, marcas de pieza y nomenclador del vehículo (marca → modelo →
+// motor) para los selects; todo desde la BD, ya no hay listas fijas en el código.
 const categories = ref<Category[]>([])
 const brands = ref<Brand[]>([])
+const vehicleBrands = ref<VehicleBrand[]>([])
+const vehicleModels = ref<VehicleModel[]>([])
+const vehicleMotors = ref<VehicleMotor[]>([])
 onMounted(async () => {
   try {
-    ;[categories.value, brands.value] = await Promise.all([
+    ;[
+      categories.value,
+      brands.value,
+      vehicleBrands.value,
+      vehicleModels.value,
+      vehicleMotors.value,
+    ] = await Promise.all([
       fetchCategories(),
       fetchBrands(),
+      fetchVehicleBrands(),
+      fetchVehicleModels(),
+      fetchVehicleMotors(),
     ])
   } catch (e) {
     console.error('[CalRod] PartForm carga catálogos:', e)
@@ -56,6 +76,11 @@ const form = reactive<PartInput>(
         image_url: null,
         discount_amount: null,
         is_best_deal: false,
+        wholesale_price: null,
+        // Mismo default que la BD (0014): mayorista desde 5 unidades.
+        wholesale_min_qty: 5,
+        // Mismo default que la BD (0018): sin existencia cargada, 0.
+        stock_qty: 0,
       },
 )
 
@@ -63,13 +88,18 @@ const specs = reactive<SpecInput[]>(
   props.part?.part_specs?.map((s) => ({ label: s.label, value: s.value })) ?? [],
 )
 
+// La fila guarda marca (0019), modelo opcional y motor opcional.
 const compat = reactive<CompatInput[]>(
   props.part?.part_compatibility?.map((c) => ({
-    vehicle_brand: c.vehicle_brand,
-    vehicle_model: c.vehicle_model,
+    vehicle_brand_id:
+      c.vehicle_brand_id ??
+      c.vehicle_models?.vehicle_brand_id ??
+      c.vehicle_motors?.vehicle_brand_id ??
+      null,
+    vehicle_model_id: c.vehicle_model_id,
+    motor_id: c.motor_id,
     year_from: c.year_from,
     year_to: c.year_to,
-    motor: c.motor ?? null,
   })) ?? [],
 )
 
@@ -77,15 +107,53 @@ const compat = reactive<CompatInput[]>(
 const origins = Object.entries(ORIGIN_LABELS) as [OriginType, string][]
 const availabilities = Object.entries(AVAILABILITY_LABELS) as [Availability, string][]
 
-// ── Foto ────────────────────────────────────────────────────────────────────
-const imageFile = ref<File | null>(null)
-const preview = ref<string | null>(props.part?.image_url ?? null)
+// ── Fotos (galería, 0020) ───────────────────────────────────────────────────
+// El orden del array ES el orden de la galería: la primera es la PRINCIPAL (la
+// que se ve en el catálogo y abre la ficha). En edición partimos de las fotos que
+// ya tiene la pieza; partGallery() se encarga de las piezas viejas que solo
+// tienen image_url.
+const gallery = reactive<PartImageDraft[]>(
+  props.part
+    ? partGallery(props.part).map((url) => ({ url, file: null, preview: url }))
+    : [],
+)
 
-function onFileChange(e: Event) {
-  const file = (e.target as HTMLInputElement).files?.[0] ?? null
-  imageFile.value = file
-  if (file) preview.value = URL.createObjectURL(file)
+/** Object URLs creados para las previsualizaciones, para revocarlos al salir. */
+const objectUrls: string[] = []
+
+function onFilesChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  for (const file of Array.from(input.files ?? [])) {
+    const preview = URL.createObjectURL(file)
+    objectUrls.push(preview)
+    gallery.push({ url: null, file, preview })
+  }
+  // El input se limpia para que elegir otra vez el MISMO archivo vuelva a
+  // disparar el change (si no, el navegador lo considera sin cambios).
+  input.value = ''
 }
+
+function removeImage(i: number) {
+  gallery.splice(i, 1)
+}
+
+/** Mueve una foto una posición; así se elige cuál es la principal. */
+function moveImage(i: number, delta: number) {
+  const j = i + delta
+  if (j < 0 || j >= gallery.length) return
+  const [item] = gallery.splice(i, 1)
+  gallery.splice(j, 0, item)
+}
+
+function makeMain(i: number) {
+  if (i === 0) return
+  const [item] = gallery.splice(i, 1)
+  gallery.unshift(item)
+}
+
+onBeforeUnmount(() => {
+  for (const url of objectUrls) URL.revokeObjectURL(url)
+})
 
 // ── Specs / compatibilidad dinámicas ─────────────────────────────────────────
 function addSpec() {
@@ -95,17 +163,54 @@ function removeSpec(i: number) {
   specs.splice(i, 1)
 }
 function addCompat() {
-  // Años y motor opcionales: arrancan vacíos (null), el admin los llena si aplica.
   compat.push({
-    vehicle_brand: '',
-    vehicle_model: '',
+    vehicle_brand_id: null,
+    vehicle_model_id: null,
+    motor_id: null,
     year_from: null,
     year_to: null,
-    motor: null,
   })
 }
 function removeCompat(i: number) {
   compat.splice(i, 1)
+}
+
+// ── Cascada marca → modelo → motor ───────────────────────────────────────────
+function modelsFor(brandId: string | null) {
+  if (!brandId) return []
+  return vehicleModels.value.filter((m) => m.vehicle_brand_id === brandId)
+}
+
+function motorsFor(brandId: string | null, modelId: string | null) {
+  if (modelId) {
+    return vehicleMotors.value.filter(
+      (mo) =>
+        mo.vehicle_model_id === modelId ||
+        (brandId && mo.vehicle_brand_id === brandId && !mo.vehicle_model_id),
+    )
+  }
+  if (brandId) {
+    return vehicleMotors.value.filter(
+      (mo) =>
+        mo.vehicle_brand_id === brandId ||
+        (mo.vehicle_models && mo.vehicle_models.vehicle_brand_id === brandId),
+    )
+  }
+  return []
+}
+
+function onBrandChange(c: CompatInput) {
+  c.vehicle_model_id = null
+  c.motor_id = null
+}
+function onModelChange(c: CompatInput) {
+  // Si se cambia de modelo, se resetea el motor solo si pertenecía exclusivamente al modelo anterior
+  if (c.motor_id) {
+    const currentMotor = vehicleMotors.value.find((mo) => mo.id === c.motor_id)
+    if (currentMotor?.vehicle_model_id && currentMotor.vehicle_model_id !== c.vehicle_model_id) {
+      c.motor_id = null
+    }
+  }
 }
 
 // ── Guardar ──────────────────────────────────────────────────────────────────
@@ -116,17 +221,42 @@ const error = ref<string | null>(null)
 // El precio que captura el admin es el precio NORMAL; el descuento es un monto
 // FIJO en USD que se le resta:
 //   final = price - discount_amount ; ahorro = discount_amount
-const money = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'USD' })
+// El formateador sale de usePartPricing, así el panel y el catálogo muestran
+// exactamente el mismo número.
 
-// El monto viene de un <input type="number"> con v-model.number: vacío = "" (string),
-// no null. Normalizamos a number|null para validar y calcular sin sorpresas.
-const discountAmount = computed<number | null>(() => {
-  const raw = form.discount_amount as number | string | null
-  if (raw === null || raw === undefined || (typeof raw === 'string' && raw.trim() === '')) {
-    return null
-  }
+/**
+ * Un <input type="number"> con v-model.number deja "" (string) cuando se vacía,
+ * no null, y `Number("")` es 0. Normalizamos a number|null para validar y
+ * calcular sin guardar ceros fantasma.
+ */
+function numberOrNull(raw: number | string | null | undefined): number | null {
+  if (raw === null || raw === undefined) return null
+  if (typeof raw === 'string' && raw.trim() === '') return null
   const n = Number(raw)
   return Number.isFinite(n) ? n : null
+}
+
+const discountAmount = computed<number | null>(() =>
+  numberOrNull(form.discount_amount as number | string | null),
+)
+
+const wholesalePrice = computed<number | null>(() =>
+  numberOrNull(form.wholesale_price as number | string | null),
+)
+
+const wholesaleMinQty = computed<number | null>(() =>
+  numberOrNull(form.wholesale_min_qty as number | string | null),
+)
+
+const stockQty = computed<number | null>(() =>
+  numberOrNull(form.stock_qty as number | string | null),
+)
+
+/** Precio final al detalle con lo que hay ahora mismo en el formulario. */
+const retailNow = computed(() => {
+  const save = discountAmount.value
+  if (save === null || save <= 0 || save >= form.price) return form.price
+  return form.price - save
 })
 
 const offerPreview = computed(() => {
@@ -141,11 +271,28 @@ const offerPreview = computed(() => {
   }
 })
 
+// Vista previa del mayorista: solo cuenta si de verdad conviene contra el precio
+// al detalle (misma regla que partWholesale usa en el catálogo).
+const wholesalePreview = computed(() => {
+  const wp = wholesalePrice.value
+  if (wp === null || wp <= 0 || retailNow.value <= 0 || wp >= retailNow.value) {
+    return null
+  }
+  return {
+    priceFmt: money.format(wp),
+    qty: wholesaleMinQty.value ?? 5,
+    retailFmt: money.format(retailNow.value),
+    saveFmt: money.format(retailNow.value - wp),
+  }
+})
+
 async function onSubmit() {
   error.value = null
 
-  if (!form.code.trim() || !form.name.trim()) {
-    error.value = 'Código y nombre son obligatorios.'
+  // El código es OPCIONAL desde 0015: no todo lo que entra al mostrador trae
+  // número de parte. Solo el nombre es imprescindible.
+  if (!form.name.trim()) {
+    error.value = 'El nombre es obligatorio.'
     return
   }
   if (!form.brand_id) {
@@ -169,35 +316,90 @@ async function onSubmit() {
       return
     }
   }
+  // Mayorista opcional (0014). Si el admin escribió un precio, tiene que ser un
+  // precio mejor que el del detalle: si no, no es un mayorista, es un error de
+  // captura que el catálogo no mostraría.
+  if (wholesalePrice.value !== null) {
+    if (wholesalePrice.value <= 0) {
+      error.value =
+        'El precio mayorista debe ser un monto en USD mayor que 0, o dejarse vacío.'
+      return
+    }
+    if (wholesalePrice.value >= retailNow.value) {
+      error.value =
+        `El precio mayorista debe ser menor que el precio al detalle (${money.format(retailNow.value)}).`
+      return
+    }
+    if (wholesaleMinQty.value === null || wholesaleMinQty.value < 2) {
+      error.value = 'La cantidad mínima para el precio mayorista debe ser 2 o más.'
+      return
+    }
+  }
+  // Existencia (0018): unidades, no dinero. Vacío es válido y significa 0 (el
+  // mismo default de la BD); si hay valor tiene que ser entero y no negativo,
+  // que es justo lo que acepta la columna.
+  if (stockQty.value !== null) {
+    if (!Number.isInteger(stockQty.value) || stockQty.value < 0) {
+      error.value = 'La existencia debe ser un número entero de 0 o más.'
+      return
+    }
+  }
+  // Compatibilidad: la marca es obligatoria en cada fila (0019). Modelo y motor son opcionales.
+  if (compat.some((c) => !c.vehicle_brand_id)) {
+    error.value =
+      'Hay compatibilidades sin marca de auto. Elige la marca o quita la fila.'
+    return
+  }
 
   saving.value = true
   try {
-    // Si hay archivo nuevo, se sube primero y su URL pública va a image_url.
-    // Pasamos la URL anterior para que uploadImage borre la foto vieja del bucket.
-    if (imageFile.value) {
-      form.image_url = await uploadImage(
-        imageFile.value,
-        form.code,
-        props.part?.image_url ?? null,
-      )
-    }
+    // Las fotos van primero: suben al bucket y de ahí sale la lista ordenada de
+    // URLs. Carpeta del bucket: el código cuando lo tiene y, desde que es
+    // opcional (0015), el id de la pieza en edición o un uuid nuevo en alta.
+    // Nunca un valor compartido: dos piezas sin código se pisarían las fotos.
+    const folderKey = form.code?.trim() || props.part?.id || crypto.randomUUID()
+    const imageUrls = await saveGallery(
+      [...gallery],
+      folderKey,
+      props.part?.image_url ?? null,
+    )
 
     // Normalizamos textos opcionales vacíos a null.
     const payload: PartInput = {
       ...form,
-      code: form.code.trim(),
+      // Código vacío → null, nunca cadena vacía: el UNIQUE de parts trata cada
+      // null como distinto (varias piezas pueden no tener código) pero dos ''
+      // chocarían, y el CHECK parts_code_not_blank de 0015 los rechaza.
+      code: form.code?.trim() || null,
       name: form.name.trim(),
       description: form.description?.trim() || null,
       material: form.material?.trim() || null,
       // Descuento vacío o inválido → null (sin oferta). Usamos el valor ya
       // normalizado (discountAmount), no el crudo del input que puede ser "".
       discount_amount: discountAmount.value,
+      // Mayorista: precio vacío → null (la pieza no tiene mayorista). La
+      // cantidad mínima es NOT NULL en la BD, así que vacía vuelve al 5 default.
+      wholesale_price: wholesalePrice.value,
+      wholesale_min_qty:
+        wholesaleMinQty.value && wholesaleMinQty.value >= 2
+          ? wholesaleMinQty.value
+          : 5,
+      // Existencia vacía → 0, mismo default que la columna (0018).
+      stock_qty: stockQty.value ?? 0,
+      // La principal denormalizada (0020): la primera foto de la galería, o null
+      // si la pieza se quedó sin ninguna. Va en el mismo UPDATE/INSERT que la
+      // fila, así que fila y galería nunca discrepan.
+      image_url: imageUrls[0] ?? null,
     }
 
+    // La galería se escribe después de la fila: en alta el part_id no existe
+    // hasta que createPart devuelve el id.
     if (isEdit && props.part) {
       await updatePart(props.part.id, payload, [...specs], [...compat])
+      await replaceImages(props.part.id, imageUrls)
     } else {
-      await createPart(payload, [...specs], [...compat])
+      const newId = await createPart(payload, [...specs], [...compat])
+      await replaceImages(newId, imageUrls)
     }
     emit('saved')
   } catch (e) {
@@ -230,8 +432,8 @@ async function onSubmit() {
       <legend class="block__legend">Datos de la pieza</legend>
       <div class="grid">
         <label class="field">
-          <span class="field__label">Código / SKU *</span>
-          <input v-model="form.code" class="field__input" placeholder="BR-4471-C" />
+          <span class="field__label">Código / SKU</span>
+          <input v-model="form.code" class="field__input" placeholder="Opcional — BR-4471-C" />
         </label>
         <label class="field">
           <span class="field__label">Nombre *</span>
@@ -282,6 +484,20 @@ async function onSubmit() {
           </select>
         </label>
         <label class="field">
+          <span class="field__label">En existencia (unidades)</span>
+          <input
+            v-model.number="form.stock_qty"
+            type="number"
+            min="0"
+            step="1"
+            class="field__input"
+            placeholder="0"
+          />
+          <span class="field__hint">
+            Se captura a mano. No cambia sola la disponibilidad de arriba.
+          </span>
+        </label>
+        <label class="field">
           <span class="field__label">Material</span>
           <input v-model="form.material" class="field__input" placeholder="Cerámica" />
         </label>
@@ -329,31 +545,120 @@ async function onSubmit() {
       </p>
     </fieldset>
 
-    <!-- Foto -->
+    <!-- Mayorista (opcional): otro precio por unidad al llevar varias piezas. -->
     <fieldset class="block">
-      <legend class="block__legend">Foto</legend>
-      <div class="photo">
-        <div class="photo__preview">
-          <img v-if="preview" :src="preview" alt="Vista previa" class="photo__img" />
-          <div v-else class="photo__img photo__img--empty" aria-hidden="true">
-            <span class="mono">Sin imagen</span>
+      <legend class="block__legend">Precio mayorista (opcional)</legend>
+      <div class="grid">
+        <label class="field">
+          <span class="field__label">Precio mayorista por unidad (USD)</span>
+          <input
+            v-model.number="form.wholesale_price"
+            type="number"
+            min="0"
+            step="0.01"
+            class="field__input"
+            placeholder="Ej. 8.90 — vacío = sin mayorista"
+          />
+        </label>
+        <label class="field">
+          <span class="field__label">Desde cuántas unidades</span>
+          <input
+            v-model.number="form.wholesale_min_qty"
+            type="number"
+            min="2"
+            step="1"
+            class="field__input"
+            placeholder="5"
+          />
+        </label>
+      </div>
+      <p v-if="wholesalePreview" class="offer-hint">
+        Mayorista <b>{{ wholesalePreview.priceFmt }}</b> por unidad desde
+        {{ wholesalePreview.qty }} u. · al detalle {{ wholesalePreview.retailFmt }} ·
+        <span class="offer-hint__save">
+          ahorro {{ wholesalePreview.saveFmt }} por unidad
+        </span>
+      </p>
+      <p v-else class="block__empty">
+        Sin precio mayorista: la pieza se muestra solo con su precio al detalle.
+        Para que aplique, el mayorista tiene que ser menor que ese precio final.
+      </p>
+    </fieldset>
+
+    <!-- Fotos -->
+    <fieldset class="block">
+      <legend class="block__legend">Fotos</legend>
+
+      <div v-if="gallery.length" class="shots">
+        <div
+          v-for="(img, i) in gallery"
+          :key="img.preview"
+          class="shot"
+          :class="{ 'shot--main': i === 0 }"
+        >
+          <img :src="img.preview" :alt="`Foto ${i + 1}`" class="shot__img" />
+          <span v-if="i === 0" class="shot__tag">Principal</span>
+
+          <div class="shot__tools">
+            <button
+              type="button"
+              class="shot__btn"
+              title="Mover antes"
+              aria-label="Mover antes"
+              :disabled="i === 0"
+              @click="moveImage(i, -1)"
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              class="shot__btn"
+              title="Hacer principal"
+              aria-label="Hacer principal"
+              :disabled="i === 0"
+              @click="makeMain(i)"
+            >
+              ★
+            </button>
+            <button
+              type="button"
+              class="shot__btn"
+              title="Mover después"
+              aria-label="Mover después"
+              :disabled="i === gallery.length - 1"
+              @click="moveImage(i, 1)"
+            >
+              ›
+            </button>
+            <button
+              type="button"
+              class="shot__btn shot__btn--del"
+              title="Quitar foto"
+              aria-label="Quitar foto"
+              @click="removeImage(i)"
+            >
+              ×
+            </button>
           </div>
         </div>
-        <div class="photo__control">
-          <label class="btn btn--ghost">
-            {{ preview ? 'Cambiar foto' : 'Subir foto' }}
-            <input
-              type="file"
-              accept="image/*"
-              class="photo__file"
-              @change="onFileChange"
-            />
-          </label>
-          <p class="photo__hint">
-            Se sube al bucket <code>part-images</code> al guardar. La URL pública se
-            genera sola.
-          </p>
-        </div>
+      </div>
+
+      <div class="shots__actions">
+        <label class="btn btn--ghost">
+          {{ gallery.length ? 'Agregar fotos' : 'Subir fotos' }}
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            class="photo__file"
+            @change="onFilesChange"
+          />
+        </label>
+        <p class="photo__hint">
+          La primera es la <b>principal</b>: es la que se ve en el catálogo y la que
+          abre la ficha. Ordénalas con ‹ › o marca otra con ★. Se suben al bucket
+          <code>part-images</code> al guardar.
+        </p>
       </div>
     </fieldset>
 
@@ -385,8 +690,29 @@ async function onSubmit() {
       <legend class="block__legend">Compatibilidad</legend>
       <div v-if="compat.length" class="rows">
         <div v-for="(c, i) in compat" :key="i" class="rows__item rows__item--compat">
-          <input v-model="c.vehicle_brand" class="field__input" placeholder="Nissan" />
-          <input v-model="c.vehicle_model" class="field__input" placeholder="Sentra" />
+          <select
+            v-model="c.vehicle_brand_id"
+            class="field__input"
+            @change="onBrandChange(c)"
+          >
+            <option :value="null" disabled>— Marca del auto —</option>
+            <option v-for="vb in vehicleBrands" :key="vb.id" :value="vb.id">
+              {{ vb.name }}
+            </option>
+          </select>
+          <select
+            v-model="c.vehicle_model_id"
+            class="field__input"
+            :disabled="!c.vehicle_brand_id"
+            @change="onModelChange(c)"
+          >
+            <option :value="null">
+              {{ c.vehicle_brand_id ? 'Modelo (opc.) — todos' : '— Elige marca primero —' }}
+            </option>
+            <option v-for="m in modelsFor(c.vehicle_brand_id)" :key="m.id" :value="m.id">
+              {{ m.name }}
+            </option>
+          </select>
           <input
             v-model.number="c.year_from"
             type="number"
@@ -399,11 +725,17 @@ async function onSubmit() {
             class="field__input"
             placeholder="Hasta"
           />
-          <input
-            v-model="c.motor"
+          <!-- Motor opcional: habilitado en cuanto se elige la marca (0019) -->
+          <select
+            v-model="c.motor_id"
             class="field__input"
-            placeholder="Motor (opc.) — 1.6L"
-          />
+            :disabled="!c.vehicle_brand_id"
+          >
+            <option :value="null">Motor (opc.) — cualquiera</option>
+            <option v-for="mo in motorsFor(c.vehicle_brand_id, c.vehicle_model_id)" :key="mo.id" :value="mo.id">
+              {{ mo.name }}
+            </option>
+          </select>
           <button
             type="button"
             class="rows__remove"
@@ -415,6 +747,10 @@ async function onSubmit() {
         </div>
       </div>
       <p v-else class="block__empty">Sin compatibilidad. Agrega marca, modelo, años y motor (opcional).</p>
+      <p v-if="!vehicleBrands.length" class="block__empty">
+        El nomenclador de marcas de auto está vacío. Créalas en la pestaña
+        “Marcas de auto” para poder declarar compatibilidad.
+      </p>
       <button type="button" class="btn btn--ghost btn--sm" @click="addCompat">
         + Agregar compatibilidad
       </button>
@@ -536,6 +872,14 @@ async function onSubmit() {
   font-weight: 500;
 }
 
+/* Aclaración bajo un campo (p. ej. que la existencia se captura a mano). */
+.field__hint {
+  font-size: 0.72rem;
+  color: var(--charcoal);
+  opacity: 0.75;
+  line-height: 1.35;
+}
+
 .field__input {
   background: var(--surface-2);
   border: 1px solid var(--border);
@@ -570,34 +914,87 @@ select.field__input {
   cursor: pointer;
 }
 
-/* Foto */
-.photo {
-  display: flex;
-  gap: var(--space-5);
-  align-items: center;
-  flex-wrap: wrap;
+/* Fotos: rejilla de miniaturas, la primera marcada como principal */
+.shots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 
-.photo__img {
-  width: 160px;
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
-  border-radius: var(--radius);
+.shot {
+  position: relative;
   border: 1px solid var(--border);
+  border-radius: var(--radius);
   background: var(--surface-2);
+  padding: 6px;
+  overflow: hidden;
+}
+/* La principal se distingue con el azul de marca, no con otro tamaño: así la
+   rejilla no se descuadra al reordenar. */
+.shot--main { border-color: var(--blue-2); }
+
+.shot__img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  display: block;
 }
 
-.photo__img--empty {
+.shot__tag {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--blue);
+  color: #eceef2;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* La barra de herramientas aparece al pasar el mouse o al enfocar con teclado. */
+.shot__tools {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px;
+  background: var(--surface-glass);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.shot:hover .shot__tools,
+.shot:focus-within .shot__tools {
+  opacity: 1;
+}
+
+.shot__btn {
+  width: 24px;
+  height: 24px;
   display: grid;
   place-items: center;
-  color: var(--charcoal);
-  font-size: 0.8rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--silver);
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
 }
+.shot__btn:hover:not(:disabled) { background: var(--surface-2); color: var(--cream); }
+.shot__btn:disabled { opacity: 0.3; cursor: default; }
+.shot__btn--del:hover { color: var(--danger); }
 
-.photo__control {
+.shots__actions {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-4);
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .photo__file {

@@ -56,6 +56,7 @@ onMounted(async () => {
     store.loadParts(),
     store.loadCategories(),
     store.loadBrands(),
+    store.loadVehicleBrands(),
     store.loadAllVehicles(),
     store.loadStoreSettings(),
   ])
@@ -80,7 +81,7 @@ onBeforeUnmount(() => {
           <span class="hero__title-grad">sin adivinar.</span>
         </h1>
         <p class="hero__lead">
-          Busque por marca, modelo o número de parte. Cada pieza muestra compatibilidad
+          Cada pieza muestra compatibilidad
           real garantizada.
         </p>
         <button type="button" class="btn btn--primary hero__cta" @click="onHeroCta">

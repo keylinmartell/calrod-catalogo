@@ -1,13 +1,10 @@
 <script setup lang="ts">
-defineProps<{
-  items: {
-    vehicle_brand: string
-    vehicle_model: string
-    year_from: number | null
-    year_to: number | null
-    motor: string | null
-  }[]
-}>()
+import type { PartCompatibility } from '@/types/part'
+import { motorName, vehicleBrandName, vehicleModelName } from '@/types/part'
+
+// Marca, modelo y motor llegan embebidos por las FK del nomenclador (0013/0016),
+// de ahí los helpers en vez de leer campos de texto.
+defineProps<{ items: PartCompatibility[] }>()
 
 // Rango de años legible aunque falte alguno (o los dos): "2015–2020", "2015+",
 // "hasta 2020" o vacío. Los años son opcionales en la BD.
@@ -20,7 +17,7 @@ function yearRange(from: number | null, to: number | null): string {
 </script>
 
 <template>
-  <section class="panel-card">
+  <section class="tech-block">
     <h2 class="panel-title">
       <span class="panel-icon">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="var(--blue-2)" stroke-width="1.7">
@@ -28,67 +25,76 @@ function yearRange(from: number | null, to: number | null): string {
         </svg>
       </span>
       Compatibilidad
+      <span v-if="items.length" class="panel-count mono">{{ items.length }}</span>
     </h2>
 
-    <div v-if="items.length" class="compat-list">
-      <div v-for="(item, i) in items" :key="i" class="compat-row">
-        <div class="compat-vehicle">
-          <span class="compat-brand">{{ item.vehicle_brand }}</span>
-          <span class="compat-model">
-            {{ item.vehicle_model }}
-            <span v-if="item.motor" class="compat-motor">· {{ item.motor }}</span>
-          </span>
-        </div>
+    <ul v-if="items.length" class="compat-list">
+      <li v-for="(item, i) in items" :key="i" class="compat-row">
+        <span class="compat-vehicle">
+          <b class="compat-brand">{{ vehicleBrandName(item) }}</b>
+          <template v-if="vehicleModelName(item)"> {{ vehicleModelName(item) }}</template>
+          <span v-if="motorName(item)" class="compat-motor"> · {{ motorName(item) }}</span>
+        </span>
         <span
           v-if="yearRange(item.year_from, item.year_to)"
           class="compat-years mono"
         >{{ yearRange(item.year_from, item.year_to) }}</span>
-      </div>
-    </div>
+      </li>
+    </ul>
     <p v-else class="empty-note">Sin compatibilidad registrada todavía.</p>
   </section>
 </template>
 
 <style scoped>
-.panel-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-5) var(--space-6);
-}
+/* Mismo bloque plano que PartSpecSheet: cada vehículo es un renglón, no una
+   tarjeta. Antes cada fila traía fondo + borde + radio y una lista de cinco
+   compatibilidades se leía como cinco cajas apiladas. */
+.tech-block { min-width: 0; }
+
 .panel-title {
   display: flex;
   align-items: center;
   gap: 9px;
-  font-size: 1.05rem;
+  font-size: 0.78rem;
   font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-family: var(--font-display);
+  color: var(--charcoal);
   margin-bottom: var(--space-4);
 }
 .panel-icon {
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
-  background: rgba(46,111,224,0.14);
-  border: 1px solid rgba(46,111,224,0.3);
   display: flex;
   align-items: center;
-  justify-content: center;
   flex-shrink: 0;
 }
-.compat-list { display: flex; flex-direction: column; gap: 8px; }
+.panel-count {
+  margin-left: auto;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--blue-2);
+}
+
+.compat-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
 .compat-row {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  padding: 11px 14px;
+  align-items: baseline;
+  gap: var(--space-4);
+  padding: 10px 0;
+  border-bottom: 1px dotted var(--border);
+  font-size: 0.86rem;
 }
-.compat-vehicle { display: flex; flex-direction: column; }
-.compat-brand { font-size: 0.86rem; font-weight: 600; color: var(--cream); }
-.compat-model { font-size: 0.76rem; color: var(--charcoal); }
+.compat-row:last-child { border-bottom: none; }
+.compat-vehicle { color: var(--text-dim); min-width: 0; }
+.compat-brand { color: var(--cream); font-weight: 600; }
 .compat-motor { color: var(--blue-2); }
-.compat-years { font-size: 0.78rem; color: var(--blue-2); }
+.compat-years { color: var(--charcoal); font-size: 0.78rem; white-space: nowrap; }
 .empty-note { color: var(--charcoal); font-size: 0.82rem; font-style: italic; margin: 0; }
 </style>

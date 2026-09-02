@@ -6,7 +6,7 @@ defineProps<{
 </script>
 
 <template>
-  <section class="panel-card">
+  <section class="tech-block">
     <h2 class="panel-title">
       <span class="panel-icon">
         <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="var(--blue-2)" stroke-width="1.7">
@@ -33,42 +33,43 @@ defineProps<{
 </template>
 
 <style scoped>
-.panel-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-5) var(--space-6);
-}
+/*
+ * Bloque plano: sin fondo, sin borde, sin radio. La separación respecto al resto
+ * la pone la ficha (PartDetailView dibuja la línea del bloque técnico), así la
+ * página deja de ser una pila de tarjetas dentro de tarjetas.
+ */
+.tech-block { min-width: 0; }
+
 .panel-title {
   display: flex;
   align-items: center;
   gap: 9px;
-  font-size: 1.05rem;
+  font-size: 0.78rem;
   font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-family: var(--font-display);
+  color: var(--charcoal);
   margin-bottom: var(--space-4);
 }
 .panel-icon {
-  width: 26px;
-  height: 26px;
-  border-radius: 7px;
-  background: rgba(46,111,224,0.14);
-  border: 1px solid rgba(46,111,224,0.3);
   display: flex;
   align-items: center;
-  justify-content: center;
   flex-shrink: 0;
 }
 .spec-list { display: flex; flex-direction: column; }
+/* Punteada y solo entre filas: marca el renglón sin encajonarlo. */
 .spec-row {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  padding: 11px 0;
-  border-bottom: 1px solid var(--border);
-  font-size: 0.85rem;
+  gap: var(--space-4);
+  padding: 10px 0;
+  border-bottom: 1px dotted var(--border);
+  font-size: 0.86rem;
 }
 .spec-row:last-child { border-bottom: none; }
 .spec-row dt { color: var(--charcoal); margin: 0; }
-.spec-row dd { color: var(--cream); margin: 0; }
+.spec-row dd { color: var(--cream); margin: 0; text-align: right; }
 .empty-note { color: var(--charcoal); font-size: 0.82rem; font-style: italic; margin: 0; }
 </style>

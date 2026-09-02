@@ -5,9 +5,11 @@ import { useParts } from '@/composables/useParts'
 import { useAdminParts } from '@/composables/useAdminParts'
 import type { Part } from '@/types/part'
 import { AVAILABILITY_LABELS } from '@/types/part'
+import { partWholesale } from '@/composables/usePartPricing'
 import PartForm from '@/components/admin/PartForm.vue'
 import CategoryManager from '@/components/admin/CategoryManager.vue'
 import BrandManager from '@/components/admin/BrandManager.vue'
+import VehicleBrandManager from '@/components/admin/VehicleBrandManager.vue'
 import StoreLocationManager from '@/components/admin/StoreLocationManager.vue'
 import GearSpinner from '@/components/brand/GearSpinner.vue'
 
@@ -19,8 +21,11 @@ const parts = ref<Part[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 
-// Pestaña activa del panel: catálogo de piezas, categorías, marcas o ubicación.
-const tab = ref<'parts' | 'categories' | 'brands' | 'location'>('parts')
+// Pestaña activa del panel: piezas, categorías, marcas de pieza, marcas de auto
+// (nomenclador) o ubicación.
+const tab = ref<'parts' | 'categories' | 'brands' | 'vehicle-brands' | 'location'>(
+  'parts',
+)
 
 // Vista: 'list' | 'edit'. En 'edit', `editing` es null para "nueva pieza".
 const view = ref<'list' | 'edit'>('list')
@@ -28,6 +33,12 @@ const editing = ref<Part | null>(null)
 
 const priceFmt = (n: number) =>
   new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'USD' }).format(n)
+
+/** "mayorista $12.60 · desde 5 u." o '' si la pieza no tiene precio mayorista. */
+const wholesaleLabel = (part: Part) => {
+  const w = partWholesale(part)
+  return w ? `mayorista ${w.priceFmt} · ${w.qtyLabel.toLowerCase()}` : ''
+}
 
 async function loadList() {
   loading.value = true
@@ -123,6 +134,13 @@ onMounted(loadList)
       </button>
       <button
         class="dash__tab"
+        :class="{ 'dash__tab--active': tab === 'vehicle-brands' }"
+        @click="tab = 'vehicle-brands'"
+      >
+        Vehículos
+      </button>
+      <button
+        class="dash__tab"
         :class="{ 'dash__tab--active': tab === 'location' }"
         @click="tab = 'location'"
       >
@@ -135,6 +153,9 @@ onMounted(loadList)
 
     <!-- Sección: marcas -->
     <BrandManager v-else-if="tab === 'brands'" />
+
+    <!-- Sección: nomenclador de marcas de auto -->
+    <VehicleBrandManager v-else-if="tab === 'vehicle-brands'" />
 
     <!-- Sección: ubicación de la tienda -->
     <StoreLocationManager v-else-if="tab === 'location'" />
@@ -184,6 +205,9 @@ onMounted(loadList)
               <p class="row__meta mono">
                 {{ part.code }} · {{ priceFmt(part.price) }} ·
                 {{ AVAILABILITY_LABELS[part.availability] }}
+              </p>
+              <p v-if="wholesaleLabel(part)" class="row__meta mono">
+                {{ wholesaleLabel(part) }}
               </p>
             </div>
 

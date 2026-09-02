@@ -3,8 +3,13 @@ import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import type { Part } from '@/types/part'
 import { AVAILABILITY_LABELS, ORIGIN_LABELS } from '@/types/part'
+import { partWholesale } from '@/composables/usePartPricing'
 
 const props = defineProps<{ part: Part }>()
+
+// Precio mayorista (0014): segundo precio por unidad al llevar varias piezas.
+// null cuando la pieza no tiene mayorista o no conviene contra el detalle.
+const wholesale = computed(() => partWholesale(props.part))
 
 // `price` es el precio NORMAL. Si hay discount_amount válido (>0 y < price),
 // el precio final es `price - discount_amount` y el original tachado es `price`.
@@ -101,6 +106,9 @@ const ribbon = computed(() => {
           <span class="price__cents">{{ priceParts.cents }}</span>
         </div>
       </div>
+      <p v-if="wholesale" class="card__wholesale mono">
+        Mayorista <b>{{ wholesale.priceFmt }}</b> · {{ wholesale.qtyLabel }}
+      </p>
       <p class="card__foot mono">{{ footLine }}</p>
     </div>
   </RouterLink>
@@ -264,6 +272,18 @@ const ribbon = computed(() => {
   margin-top: 2px;
 }
 
+/* ── Mayorista: segundo precio, discreto pero legible ────────────────────── */
+.card__wholesale {
+  margin-top: 4px;
+  font-size: 0.66rem;
+  color: var(--charcoal);
+}
+
+.card__wholesale b {
+  color: var(--blue-2);
+  font-weight: 700;
+}
+
 /* ── Pie ─────────────────────────────────────────────────────────────────── */
 .card__foot {
   margin-top: 6px;
@@ -278,6 +298,7 @@ const ribbon = computed(() => {
   .card__sub { font-size: 0.62rem; }
   .price__int { font-size: 1.45rem; }
   .price__symbol, .price__cents { font-size: 0.75rem; }
+  .card__wholesale { font-size: 0.58rem; }
   .card__foot { font-size: 0.58rem; }
 }
 </style>

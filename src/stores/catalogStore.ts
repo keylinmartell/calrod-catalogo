@@ -1,12 +1,20 @@
 import { defineStore } from 'pinia'
 import { useParts } from '@/composables/useParts'
 import { useStoreSettings } from '@/composables/useStoreSettings'
-import type { Brand, Category, Part, StoreSettings } from '@/types/part'
+import type {
+  Brand,
+  Category,
+  Part,
+  StoreSettings,
+  VehicleBrand,
+} from '@/types/part'
 
 interface CatalogState {
   parts: Part[]
   categories: Category[]
   brands: Brand[]
+  /** Nomenclador de marcas de auto (0013): las opciones del filtro por vehículo. */
+  vehicleBrands: VehicleBrand[]
   allVehicles: { vehicle_brand: string; vehicle_model: string; motor: string | null }[]
   loading: boolean
   error: string | null
@@ -36,6 +44,7 @@ export const useCatalogStore = defineStore('catalog', {
     parts: [],
     categories: [],
     brands: [],
+    vehicleBrands: [],
     allVehicles: [],
     loading: false,
     error: null,
@@ -101,6 +110,20 @@ export const useCatalogStore = defineStore('catalog', {
       } catch (e) {
         this.brands = []
         console.error('[CalRod] loadBrands:', e)
+      }
+    },
+
+    /**
+     * Carga el nomenclador de marcas de auto (0013). Alimenta las opciones del
+     * filtro por vehículo: antes eran una lista fija en el frontend.
+     */
+    async loadVehicleBrands() {
+      const { fetchVehicleBrands } = useParts()
+      try {
+        this.vehicleBrands = await fetchVehicleBrands()
+      } catch (e) {
+        this.vehicleBrands = []
+        console.error('[CalRod] loadVehicleBrands:', e)
       }
     },
 
