@@ -67,6 +67,15 @@ export function useFilters() {
     store.setMotor(value)
   }
 
+  /** Aplica marca + modelo/motor de una vez (usado por los autos favoritos). */
+  function setVehicleFilter(v: {
+    brand: string
+    model?: string | null
+    motor?: string | null
+  }) {
+    store.setVehicleFilter(v)
+  }
+
   function clearFilters() {
     store.clearFilters()
   }
@@ -207,6 +216,7 @@ export function useFilters() {
     setVehicleModel,
     toggleVehicleModel,
     setMotor,
+    setVehicleFilter,
     clearFilters,
   }
 }

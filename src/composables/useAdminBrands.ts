@@ -38,5 +38,16 @@ export function useAdminBrands() {
     if (error) throw error
   }
 
-  return { createBrand, updateBrand, deleteBrand }
+  async function uploadBrandLogo(file: File, slug: string): Promise<string> {
+    const ext = file.name.split('.').pop() || 'png'
+    const path = `brands/${slug}-${crypto.randomUUID().slice(0, 8)}.${ext}`
+    const { error } = await supabase.storage
+      .from('part-images')
+      .upload(path, file, { upsert: true, contentType: file.type })
+    if (error) throw error
+    const { data } = supabase.storage.from('part-images').getPublicUrl(path)
+    return data.publicUrl
+  }
+
+  return { createBrand, updateBrand, deleteBrand, uploadBrandLogo }
 }

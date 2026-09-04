@@ -91,10 +91,22 @@ export function useAdminVehicleBrands() {
     return counts
   }
 
+  async function uploadBrandLogo(file: File, slug: string): Promise<string> {
+    const ext = file.name.split('.').pop() || 'png'
+    const path = `vehicle-brands/${slug}-${crypto.randomUUID().slice(0, 8)}.${ext}`
+    const { error } = await supabase.storage
+      .from('part-images')
+      .upload(path, file, { upsert: true, contentType: file.type })
+    if (error) throw error
+    const { data } = supabase.storage.from('part-images').getPublicUrl(path)
+    return data.publicUrl
+  }
+
   return {
     createVehicleBrand,
     updateVehicleBrand,
     deleteVehicleBrand,
+    uploadBrandLogo,
     fetchUsageCounts,
     fetchModelCounts,
   }

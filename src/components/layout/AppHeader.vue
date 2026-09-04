@@ -6,6 +6,8 @@ import SearchBar from '@/components/catalog/SearchBar.vue'
 import { useTheme } from '@/composables/useTheme'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPanel } from '@/composables/useAuthPanel'
+import { useFavoriteVehicles } from '@/composables/useFavoriteVehicles'
+import VehicleSelectorModal from '@/components/catalog/VehicleSelectorModal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -17,6 +19,9 @@ const { theme, toggleTheme } = useTheme()
 const auth = useAuthStore()
 const { isAuthenticated, isAdmin, profile } = storeToRefs(auth)
 const { openPanel } = useAuthPanel()
+const { favorites } = useFavoriteVehicles()
+
+const modalOpen = ref(false)
 
 // Menú de usuario (avatar → desplegable). Solo visible con sesión.
 const menuOpen = ref(false)
@@ -62,6 +67,24 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
       </div>
 
       <nav class="header__nav" aria-label="Principal">
+        <button
+          type="button"
+          class="header__favs-btn"
+          :class="{ 'header__favs-btn--has-items': favorites.length > 0 }"
+          title="Buscar por tu auto o ver favoritos"
+          @click="modalOpen = true"
+        >
+          <svg viewBox="0 0 24 24" fill="currentColor" class="header__favs-icon">
+            <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-4.66l.12-.34h13.77l.11.34V17z"/>
+            <circle cx="7.5" cy="14.5" r="1.5"/>
+            <circle cx="16.5" cy="14.5" r="1.5"/>
+          </svg>
+          <span class="header__favs-label">Mis autos</span>
+          <span v-if="favorites.length" class="header__favs-badge">{{ favorites.length }}</span>
+        </button>
+
+        <VehicleSelectorModal v-model:open="modalOpen" />
+
         <RouterLink to="/" class="header__link">Catálogo</RouterLink>
         <button
           type="button"
@@ -193,6 +216,58 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
   align-items: center;
   gap: var(--space-4);
   margin-left: auto;
+}
+
+.header__favs-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding-inline: 14px;
+  border-radius: 999px;
+  background: transparent;
+  border: 1.5px solid var(--border-strong);
+  color: var(--cream);
+  font-weight: 600;
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.header__favs-btn:hover {
+  border-color: var(--blue-2);
+  color: var(--blue-2);
+  background: rgba(26, 61, 110, 0.12);
+}
+
+.header__favs-btn--has-items {
+  border-color: rgba(26, 61, 110, 0.6);
+  background: rgba(26, 61, 110, 0.14);
+}
+
+.header__favs-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  color: var(--blue-2);
+}
+
+.header__favs-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding-inline: 5px;
+  border-radius: 999px;
+  background: var(--blue);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .header__link {

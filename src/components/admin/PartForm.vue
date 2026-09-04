@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useAdminParts, toPartInput } from '@/composables/useAdminParts'
 import { useParts } from '@/composables/useParts'
 import { money } from '@/composables/usePartPricing'
@@ -116,6 +116,41 @@ const gallery = reactive<PartImageDraft[]>(
   props.part
     ? partGallery(props.part).map((url) => ({ url, file: null, preview: url }))
     : [],
+)
+
+watch(
+  () => props.part,
+  (newPart) => {
+    if (newPart) {
+      Object.assign(form, toPartInput(newPart))
+      specs.splice(
+        0,
+        specs.length,
+        ...(newPart.part_specs?.map((s) => ({ label: s.label, value: s.value })) ?? []),
+      )
+      compat.splice(
+        0,
+        compat.length,
+        ...(newPart.part_compatibility?.map((c) => ({
+          vehicle_brand_id:
+            c.vehicle_brand_id ??
+            c.vehicle_models?.vehicle_brand_id ??
+            c.vehicle_motors?.vehicle_brand_id ??
+            null,
+          vehicle_model_id: c.vehicle_model_id,
+          motor_id: c.motor_id,
+          year_from: c.year_from,
+          year_to: c.year_to,
+        })) ?? []),
+      )
+      gallery.splice(
+        0,
+        gallery.length,
+        ...partGallery(newPart).map((url) => ({ url, file: null, preview: url })),
+      )
+    }
+  },
+  { deep: true },
 )
 
 /** Object URLs creados para las previsualizaciones, para revocarlos al salir. */
@@ -252,17 +287,27 @@ const stockQty = computed<number | null>(() =>
   numberOrNull(form.stock_qty as number | string | null),
 )
 
+/**
+ * El precio, ya normalizado. El campo se puede dejar vacío (solo el nombre es
+ * obligatorio) y la columna `price` es NOT NULL, así que vacío significa 0: una
+ * pieza se puede dar de alta sin precio y ponérselo después. Todo lo que calcula
+ * con el precio usa este valor, nunca `form.price` crudo, que puede ser "".
+ */
+const priceNow = computed<number>(() =>
+  Math.max(0, numberOrNull(form.price as number | string | null) ?? 0),
+)
+
 /** Precio final al detalle con lo que hay ahora mismo en el formulario. */
 const retailNow = computed(() => {
   const save = discountAmount.value
-  if (save === null || save <= 0 || save >= form.price) return form.price
-  return form.price - save
+  if (save === null || save <= 0 || save >= priceNow.value) return priceNow.value
+  return priceNow.value - save
 })
 
 const offerPreview = computed(() => {
   const save = discountAmount.value
-  if (save === null || save <= 0 || form.price <= 0 || save >= form.price) return null
-  const original = form.price
+  if (save === null || save <= 0 || priceNow.value <= 0 || save >= priceNow.value) return null
+  const original = priceNow.value
   const final = original - save
   return {
     finalFmt: money.format(final),
@@ -289,18 +334,17 @@ const wholesalePreview = computed(() => {
 async function onSubmit() {
   error.value = null
 
-  // El código es OPCIONAL desde 0015: no todo lo que entra al mostrador trae
-  // número de parte. Solo el nombre es imprescindible.
+  // El NOMBRE es el único campo obligatorio: es lo mínimo con que una pieza se
+  // puede reconocer en el mostrador. Todo lo demás (código desde 0015, marca,
+  // categoría, precio, compatibilidad) se puede dejar vacío y completar después,
+  // así el alta no se frena cuando el dato todavía no está a mano.
   if (!form.name.trim()) {
     error.value = 'El nombre es obligatorio.'
     return
   }
-  if (!form.brand_id) {
-    error.value = 'Selecciona una marca. Si no existe, créala en la pestaña “Marcas”.'
-    return
-  }
-  if (form.price < 0 || Number.isNaN(form.price)) {
-    error.value = 'El precio debe ser un número válido.'
+  // Un precio vacío es válido (vale 0). Solo se rechaza lo que no es un número.
+  if (numberOrNull(form.price as number | string | null) !== null && form.price < 0) {
+    error.value = 'El precio no puede ser negativo.'
     return
   }
   // El descuento es opcional. Solo validamos si el admin escribió algo: un campo
@@ -311,7 +355,7 @@ async function onSubmit() {
       error.value = 'El descuento debe ser un monto en USD mayor que 0, o dejarse vacío.'
       return
     }
-    if (discountAmount.value >= form.price) {
+    if (discountAmount.value >= priceNow.value) {
       error.value = 'El descuento no puede ser igual o mayor que el precio.'
       return
     }
@@ -344,12 +388,9 @@ async function onSubmit() {
       return
     }
   }
-  // Compatibilidad: la marca es obligatoria en cada fila (0019). Modelo y motor son opcionales.
-  if (compat.some((c) => !c.vehicle_brand_id)) {
-    error.value =
-      'Hay compatibilidades sin marca de auto. Elige la marca o quita la fila.'
-    return
-  }
+  // Compatibilidad: una fila sin marca de auto no describe nada (y la columna es
+  // NOT NULL desde 0013), así que no bloquea el guardado: se descarta al escribir
+  // los hijos. Modelo, años y motor siguen siendo opcionales.
 
   saving.value = true
   try {
@@ -374,6 +415,9 @@ async function onSubmit() {
       name: form.name.trim(),
       description: form.description?.trim() || null,
       material: form.material?.trim() || null,
+      // Precio vacío → 0 (la columna es NOT NULL): la pieza se da de alta sin
+      // precio y se le pone después.
+      price: priceNow.value,
       // Descuento vacío o inválido → null (sin oferta). Usamos el valor ya
       // normalizado (discountAmount), no el crudo del input que puede ser "".
       discount_amount: discountAmount.value,
@@ -408,6 +452,11 @@ async function onSubmit() {
       error.value = 'Ya existe una pieza con ese código.'
     } else if (msg.includes('row-level security') || msg.includes('policy')) {
       error.value = 'Sin permisos para guardar. ¿Sigue tu sesión de admin activa?'
+    } else if (msg.includes('null value') || msg.includes('not-null')) {
+      // La columna que falta la dice el propio mensaje de Postgres: si un campo
+      // que aquí es opcional sigue siendo NOT NULL en la BD, hay que verlo, no
+      // esconderlo tras un "no se pudo guardar".
+      error.value = `La base de datos exige un campo que quedó vacío. Detalle: ${(e as Error).message}`
     } else {
       error.value = 'No se pudo guardar la pieza. Intenta de nuevo.'
     }
@@ -440,23 +489,25 @@ async function onSubmit() {
           <input v-model="form.name" class="field__input" placeholder="Balata delantera" />
         </label>
         <label class="field">
-          <span class="field__label">Marca *</span>
+          <span class="field__label">Marca</span>
           <select v-model="form.brand_id" class="field__input">
-            <option :value="null" disabled>— Selecciona marca —</option>
+            <option :value="null">— Sin marca —</option>
             <option v-for="b in brands" :key="b.id" :value="b.id">
               {{ b.name }}
             </option>
           </select>
         </label>
         <label class="field">
-          <span class="field__label">Precio (USD) *</span>
+          <span class="field__label">Precio (USD)</span>
           <input
             v-model.number="form.price"
             type="number"
             min="0"
             step="0.01"
             class="field__input"
+            placeholder="0.00"
           />
+          <span class="field__hint">Vacío se guarda como 0.</span>
         </label>
         <label class="field">
           <span class="field__label">Categoría</span>

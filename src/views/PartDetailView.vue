@@ -204,9 +204,6 @@ watch(
             <span class="price__wholesale-save">(−{{ wholesale.saveFmt }} c/u)</span>
           </p>
         </div>
-
-        <!-- Fase 2: aquí entra "Agregar al carrito". -->
-        <button class="btn btn--cta" disabled>Compra en línea próximamente</button>
       </div>
 
       <!-- ---------- DETALLE TÉCNICO ---------- -->
@@ -403,18 +400,6 @@ watch(
 }
 .price__wholesale b { color: var(--cream); }
 .price__wholesale-save { color: var(--ok); }
-
-.btn--cta {
-  width: 100%;
-  margin-top: var(--space-5);
-  padding: var(--space-3) var(--space-5);
-  border-radius: var(--radius);
-  background: var(--surface-2);
-  border: 1px dashed var(--border-strong);
-  color: var(--charcoal);
-  font-weight: 600;
-  cursor: not-allowed;
-}
 
 /* ---------- bloque técnico ---------- */
 /* Cruza las dos columnas y se divide en dos: la línea del centro es el único

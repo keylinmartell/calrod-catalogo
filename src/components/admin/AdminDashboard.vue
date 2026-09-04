@@ -14,7 +14,10 @@ import StoreLocationManager from '@/components/admin/StoreLocationManager.vue'
 import GearSpinner from '@/components/brand/GearSpinner.vue'
 
 const auth = useAuthStore()
-const { fetchParts } = useParts()
+// La lista usa fetchParts (sin galería, no la necesita); editar usa
+// fetchPartById, que es el único select que trae part_images (0020) — sin él el
+// formulario abriría con una sola foto y al guardar borraría las demás.
+const { fetchParts, fetchPartById } = useParts()
 const { deletePart } = useAdminParts()
 
 const parts = ref<Part[]>([])
@@ -58,9 +61,26 @@ function newPart() {
   view.value = 'edit'
 }
 
-function editPart(part: Part) {
-  editing.value = part
-  view.value = 'edit'
+async function editPart(part: Part) {
+  loading.value = true
+  error.value = null
+  try {
+    // Solo se abre el formulario si la pieza COMPLETA (con su galería) llegó. Con
+    // datos parciales, guardar reescribiría part_images con lo que muestre el
+    // formulario y borraría del bucket las fotos que no se hayan cargado.
+    const full = await fetchPartById(part.id)
+    if (!full) {
+      error.value = `“${part.name}” ya no existe. Recarga la lista.`
+      return
+    }
+    editing.value = full
+    view.value = 'edit'
+  } catch (e) {
+    console.error('[CalRod] admin editPart:', e)
+    error.value = 'No pudimos cargar la pieza para editarla. Intenta de nuevo.'
+  } finally {
+    loading.value = false
+  }
 }
 
 async function removePart(part: Part) {

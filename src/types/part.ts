@@ -14,6 +14,7 @@ export interface Brand {
   id: string
   name: string
   slug: string
+  logo_url?: string | null
   created_at?: string
 }
 
@@ -26,6 +27,7 @@ export interface VehicleBrand {
   id: string
   name: string
   slug: string
+  logo_url?: string | null
   created_at?: string
 }
 
@@ -38,6 +40,7 @@ export interface VehicleModel {
   vehicle_brand_id: string
   name: string
   slug: string
+  image_url?: string | null
   created_at?: string
   /** Marca embebida por la FK cuando el select la pide. */
   vehicle_brands?: VehicleBrand | null
@@ -280,12 +283,14 @@ export interface CategoryInput {
 export interface BrandInput {
   name: string
   slug: string
+  logo_url?: string | null
 }
 
 /** Campos escribibles de `vehicle_brands` — el nomenclador de marcas de auto. */
 export interface VehicleBrandInput {
   name: string
   slug: string
+  logo_url?: string | null
 }
 
 /** Campos escribibles de `vehicle_models` (0016). La marca es obligatoria. */
@@ -293,6 +298,7 @@ export interface VehicleModelInput {
   vehicle_brand_id: string
   name: string
   slug: string
+  image_url?: string | null
 }
 
 /** Campos escribibles de `vehicle_motors` (0016/0019). La marca es obligatoria, el modelo opcional. */
@@ -340,18 +346,25 @@ export interface CompatInput {
   year_to: number | null
 }
 
-// ── "Mis autos": vehículos favoritos del cliente (0017) ──────────────────────
+// ── "Mis autos": vehículos favoritos del cliente (0017/0021) ─────────────────
 
 /**
  * Un auto guardado por el cliente. Apunta al nomenclador, así que si el admin
  * corrige el nombre del modelo el auto guardado se corrige con él.
+ *
+ * La marca es lo único obligatorio (0021): igual que la compatibilidad desde
+ * 0019, un favorito puede ser "toda la marca", "marca + modelo" o
+ * "marca + motor" (motores que cuelgan de la marca, sin modelo).
  */
 export interface UserVehicle {
   id: string
   user_id: string
-  vehicle_model_id: string
+  vehicle_brand_id: string
+  vehicle_model_id: string | null
   motor_id: string | null
   created_at?: string
+  /** Marca embebida por la FK. */
+  vehicle_brands?: VehicleBrand | null
   /** Modelo embebido por la FK, con su marca dentro. */
   vehicle_models?: VehicleModel | null
   vehicle_motors?: VehicleMotor | null
@@ -359,16 +372,58 @@ export interface UserVehicle {
 
 /** Campos que el cliente envía al guardar un auto (user_id lo pone la sesión). */
 export interface UserVehicleInput {
-  vehicle_model_id: string
+  vehicle_brand_id: string
+  vehicle_model_id: string | null
   motor_id: string | null
 }
 
-/** "Toyota Corolla · 1.8L", o "Toyota Corolla" si no se guardó el motor. */
-export function userVehicleLabel(v: UserVehicle): string {
-  const brand = v.vehicle_models?.vehicle_brands?.name ?? ''
-  const model = v.vehicle_models?.name ?? ''
-  const motor = v.vehicle_motors?.name ?? ''
-  const head = [brand, model].filter(Boolean).join(' ')
-  return motor ? `${head} · ${motor}` : head
+/**
+ * Un favorito ya resuelto para la UI: ids para identificarlo y nombres para
+ * pintarlo y para armar el filtro del catálogo (que trabaja por nombre).
+ *
+ * `id` es la fila de `user_vehicles` cuando hay sesión, y null cuando el
+ * favorito solo vive en localStorage (visitante sin cuenta).
+ */
+export interface FavoriteVehicle {
+  id: string | null
+  brandId: string
+  brandName: string
+  modelId: string | null
+  modelName: string
+  motorId: string | null
+  motorName: string
 }
+
+/** "Toyota Corolla · 1.8L", "Toyota · 22R" o "Toyota" a secas. */
+export function favoriteVehicleLabel(f: {
+  brandName: string
+  modelName: string
+  motorName: string
+}): string {
+  const head = [f.brandName, f.modelName].filter(Boolean).join(' ')
+  return f.motorName ? `${head} · ${f.motorName}` : head
+}
+
+/** Identidad de un favorito (marca + modelo + motor), para comparar y deduplicar. */
+export function favoriteVehicleKey(f: {
+  brandId: string
+  modelId: string | null
+  motorId: string | null
+}): string {
+  return `${f.brandId}|${f.modelId ?? ''}|${f.motorId ?? ''}`
+}
+
+/** Pasa una fila de `user_vehicles` (con sus embeds) a la forma que usa la UI. */
+export function toFavoriteVehicle(v: UserVehicle): FavoriteVehicle {
+  return {
+    id: v.id,
+    brandId: v.vehicle_brand_id,
+    brandName: v.vehicle_brands?.name ?? v.vehicle_models?.vehicle_brands?.name ?? '',
+    modelId: v.vehicle_model_id,
+    modelName: v.vehicle_models?.name ?? '',
+    motorId: v.motor_id,
+    motorName: v.vehicle_motors?.name ?? '',
+  }
+}
+
 

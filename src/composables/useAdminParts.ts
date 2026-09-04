@@ -145,8 +145,10 @@ export function useAdminParts() {
     }
 
     const cleanCompat = compat
-      // Cada fila debe especificar al menos la marca de auto (o modelo/motor)
-      .filter((c) => c.vehicle_brand_id || c.vehicle_model_id || c.motor_id)
+      // La marca del auto es NOT NULL (0013): una fila sin marca no se puede
+      // guardar y tampoco describe nada, así que se descarta en silencio en vez
+      // de hacer fallar el alta entera (solo el nombre de la pieza es obligatorio).
+      .filter((c) => !!c.vehicle_brand_id)
       .map((c) => ({
         part_id: partId,
         vehicle_brand_id: c.vehicle_brand_id || null,

@@ -6,7 +6,7 @@ import type { Brand } from '@/types/part'
 import GearSpinner from '@/components/brand/GearSpinner.vue'
 
 const { fetchBrands } = useParts()
-const { createBrand, updateBrand, deleteBrand } = useAdminBrands()
+const { createBrand, updateBrand, deleteBrand, uploadBrandLogo } = useAdminBrands()
 
 const brands = ref<Brand[]>([])
 const loading = ref(false)
@@ -14,7 +14,9 @@ const error = ref<string | null>(null)
 
 // Formulario inline: si `editingId` es null, es alta; si no, edición.
 const editingId = ref<string | null>(null)
-const draft = reactive({ name: '' })
+const draft = reactive<{ name: string; logo_url: string | null }>({ name: '', logo_url: null })
+const logoFile = ref<File | null>(null)
+const logoPreview = ref<string | null>(null)
 const saving = ref(false)
 
 async function load() {
@@ -30,14 +32,33 @@ async function load() {
   }
 }
 
+function onLogoChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (file) {
+    logoFile.value = file
+    logoPreview.value = URL.createObjectURL(file)
+  }
+}
+
+function clearLogo() {
+  logoFile.value = null
+  logoPreview.value = null
+  draft.logo_url = null
+}
+
 function startNew() {
   editingId.value = null
   draft.name = ''
+  clearLogo()
 }
 
 function startEdit(brand: Brand) {
   editingId.value = brand.id
   draft.name = brand.name
+  draft.logo_url = brand.logo_url ?? null
+  logoFile.value = null
+  logoPreview.value = brand.logo_url ?? null
 }
 
 async function save() {
@@ -49,14 +70,19 @@ async function save() {
   saving.value = true
   error.value = null
   try {
-    const input = { name, slug: slugify(name) }
+    const slug = slugify(name)
+    let finalLogo = draft.logo_url
+    if (logoFile.value) {
+      finalLogo = await uploadBrandLogo(logoFile.value, slug)
+    }
+
+    const input = { name, slug, logo_url: finalLogo }
     if (editingId.value) {
       await updateBrand(editingId.value, input)
     } else {
       await createBrand(input)
     }
-    draft.name = ''
-    editingId.value = null
+    startNew()
     await load()
   } catch (e) {
     const msg = (e as Error).message?.toLowerCase() ?? ''
@@ -97,7 +123,7 @@ onMounted(load)
     <form class="cats__form" @submit.prevent="save">
       <label class="field">
         <span class="field__label">
-          {{ editingId ? 'Editar marca' : 'Nueva marca' }}
+          {{ editingId ? 'Editar marca de repuesto' : 'Nueva marca de repuesto' }}
         </span>
         <div class="cats__form-row">
           <input
@@ -105,6 +131,18 @@ onMounted(load)
             class="field__input"
             placeholder="Ej. STP"
           />
+
+          <label class="btn btn--ghost btn--logo-upload">
+            <span v-if="logoPreview">Cambiar Logo</span>
+            <span v-else>Subir Logo</span>
+            <input type="file" accept="image/*" class="file-hidden" @change="onLogoChange" />
+          </label>
+
+          <div v-if="logoPreview" class="logo-preview-wrap">
+            <img :src="logoPreview" alt="Logo preview" class="logo-preview-img" />
+            <button type="button" class="logo-clear-btn" title="Quitar logo" @click="clearLogo">✕</button>
+          </div>
+
           <button type="submit" class="btn btn--primary" :disabled="saving">
             {{ saving ? 'Guardando…' : editingId ? 'Guardar' : 'Agregar' }}
           </button>
@@ -133,9 +171,17 @@ onMounted(load)
 
     <ul v-else class="cats__list">
       <li v-for="brand in brands" :key="brand.id" class="cats__item">
-        <div class="cats__info">
-          <span class="cats__name">{{ brand.name }}</span>
-          <span class="cats__slug mono">{{ brand.slug }}</span>
+        <div class="cats__main-col">
+          <div v-if="brand.logo_url" class="brand-logo-thumb">
+            <img :src="brand.logo_url" :alt="brand.name" />
+          </div>
+          <div v-else class="brand-logo-thumb brand-logo-thumb--empty">
+            <span>{{ brand.name.slice(0, 2).toUpperCase() }}</span>
+          </div>
+          <div class="cats__info">
+            <span class="cats__name">{{ brand.name }}</span>
+            <span class="cats__slug mono">{{ brand.slug }}</span>
+          </div>
         </div>
         <div class="cats__actions">
           <button class="btn btn--ghost btn--sm" @click="startEdit(brand)">
@@ -306,6 +352,79 @@ onMounted(load)
 
 .btn--danger:hover {
   background: rgba(217, 92, 74, 0.22);
+}
+
+.cats__main-col {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.brand-logo-thumb {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.brand-logo-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 3px;
+}
+
+.brand-logo-thumb--empty {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--charcoal);
+  font-family: var(--font-display);
+}
+
+.file-hidden {
+  display: none;
+}
+
+.btn--logo-upload {
+  cursor: pointer;
+  height: 42px;
+}
+
+.logo-preview-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.logo-preview-img {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--blue);
+  padding: 2px;
+}
+
+.logo-clear-btn {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  background: var(--danger);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
 }
 
 .btn:disabled {

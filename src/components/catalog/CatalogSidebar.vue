@@ -79,6 +79,7 @@ const currentBannerTitle = computed(() => {
       </button>
     </div>
 
+
     <!-- Sección: Marca del vehículo -->
     <div class="facet-group">
       <div class="facet-group__header">

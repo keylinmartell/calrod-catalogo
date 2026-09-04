@@ -22,6 +22,7 @@ const {
   createVehicleBrand,
   updateVehicleBrand,
   deleteVehicleBrand,
+  uploadBrandLogo,
   fetchUsageCounts: fetchBrandUsage,
 } = useAdminVehicleBrands()
 
@@ -29,6 +30,7 @@ const {
   createVehicleModel,
   updateVehicleModel,
   deleteVehicleModel,
+  uploadModelImage,
   fetchUsageCounts: fetchModelUsage,
 } = useAdminVehicleModels()
 
@@ -75,16 +77,37 @@ function toggleModel(id: string) {
 
 // ── CRUD Marcas ─────────────────────────────────────────────────────────────
 const editingBrandId = ref<string | null>(null)
-const brandDraft = reactive({ name: '' })
+const brandDraft = reactive<{ name: string; logo_url: string | null }>({ name: '', logo_url: null })
+const brandLogoFile = ref<File | null>(null)
+const brandLogoPreview = ref<string | null>(null)
+
+function onBrandLogoChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (file) {
+    brandLogoFile.value = file
+    brandLogoPreview.value = URL.createObjectURL(file)
+  }
+}
+
+function clearBrandLogo() {
+  brandLogoFile.value = null
+  brandLogoPreview.value = null
+  brandDraft.logo_url = null
+}
 
 function startNewBrand() {
   editingBrandId.value = null
   brandDraft.name = ''
+  clearBrandLogo()
 }
 
 function startEditBrand(brand: VehicleBrand) {
   editingBrandId.value = brand.id
   brandDraft.name = brand.name
+  brandDraft.logo_url = brand.logo_url ?? null
+  brandLogoFile.value = null
+  brandLogoPreview.value = brand.logo_url ?? null
 }
 
 async function saveBrand() {
@@ -96,15 +119,20 @@ async function saveBrand() {
   saving.value = true
   error.value = null
   try {
-    const input = { name, slug: slugify(name) }
+    const slug = slugify(name)
+    let finalLogo = brandDraft.logo_url
+    if (brandLogoFile.value) {
+      finalLogo = await uploadBrandLogo(brandLogoFile.value, slug)
+    }
+
+    const input = { name, slug, logo_url: finalLogo }
     if (editingBrandId.value) {
       await updateVehicleBrand(editingBrandId.value, input)
     } else {
       const created = await createVehicleBrand(input)
       expandedBrandIds.value.add(created.id)
     }
-    brandDraft.name = ''
-    editingBrandId.value = null
+    startNewBrand()
     await load()
   } catch (e) {
     const msg = (e as Error).message?.toLowerCase() ?? ''
@@ -151,12 +179,30 @@ async function removeBrand(brand: VehicleBrand) {
 // ── CRUD Modelos ────────────────────────────────────────────────────────────
 const addingModelToBrandId = ref<string | null>(null)
 const editingModelId = ref<string | null>(null)
-const modelDraft = reactive({ name: '' })
+const modelDraft = reactive<{ name: string; image_url: string | null }>({ name: '', image_url: null })
+const modelImageFile = ref<File | null>(null)
+const modelImagePreview = ref<string | null>(null)
+
+function onModelImageChange(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (file) {
+    modelImageFile.value = file
+    modelImagePreview.value = URL.createObjectURL(file)
+  }
+}
+
+function clearModelImage() {
+  modelImageFile.value = null
+  modelImagePreview.value = null
+  modelDraft.image_url = null
+}
 
 function startAddModel(brandId: string) {
   addingModelToBrandId.value = brandId
   editingModelId.value = null
   modelDraft.name = ''
+  clearModelImage()
   expandedBrandIds.value.add(brandId)
 }
 
@@ -164,12 +210,16 @@ function startEditModel(model: VehicleModel) {
   editingModelId.value = model.id
   addingModelToBrandId.value = null
   modelDraft.name = model.name
+  modelDraft.image_url = model.image_url ?? null
+  modelImageFile.value = null
+  modelImagePreview.value = model.image_url ?? null
 }
 
 function cancelModelAction() {
   addingModelToBrandId.value = null
   editingModelId.value = null
   modelDraft.name = ''
+  clearModelImage()
 }
 
 async function saveModel(brandId?: string) {
@@ -181,16 +231,24 @@ async function saveModel(brandId?: string) {
   saving.value = true
   error.value = null
   try {
+    const slug = slugify(name)
+    let finalImage = modelDraft.image_url
+    if (modelImageFile.value) {
+      finalImage = await uploadModelImage(modelImageFile.value, slug)
+    }
+
     if (editingModelId.value) {
       await updateVehicleModel(editingModelId.value, {
         name,
-        slug: slugify(name),
+        slug,
+        image_url: finalImage,
       })
     } else if (brandId) {
       const created = await createVehicleModel({
         vehicle_brand_id: brandId,
         name,
-        slug: slugify(name),
+        slug,
+        image_url: finalImage,
       })
       expandedModelIds.value.add(created.id)
     }
@@ -394,6 +452,18 @@ onMounted(load)
             class="field__input"
             placeholder="Ej. Toyota, Nissan, Chevrolet…"
           />
+
+          <label class="btn btn--ghost btn--logo-upload">
+            <span v-if="brandLogoPreview">Cambiar Logo</span>
+            <span v-else>Subir Logo</span>
+            <input type="file" accept="image/*" class="file-hidden" @change="onBrandLogoChange" />
+          </label>
+
+          <div v-if="brandLogoPreview" class="logo-preview-wrap">
+            <img :src="brandLogoPreview" alt="Logo preview" class="logo-preview-img" />
+            <button type="button" class="logo-clear-btn" title="Quitar logo" @click="clearBrandLogo">✕</button>
+          </div>
+
           <button type="submit" class="btn btn--primary" :disabled="saving">
             {{ saving ? 'Guardando…' : editingBrandId ? 'Guardar' : 'Agregar marca' }}
           </button>
@@ -459,6 +529,8 @@ onMounted(load)
               @click="toggleBrand(brand.id)"
             >
               <span class="tree__chevron">{{ expandedBrandIds.has(brand.id) ? '▼' : '▶' }}</span>
+              <img v-if="brand.logo_url" :src="brand.logo_url" :alt="brand.name" class="brand-logo-img" />
+              <span v-else class="brand-logo-placeholder">{{ brand.name.slice(0, 2).toUpperCase() }}</span>
               <span class="tree__brand-name">{{ brand.name }}</span>
             </button>
 
@@ -604,6 +676,15 @@ onMounted(load)
                   placeholder="Ej. Corolla, Hilux, RAV4…"
                   autofocus
                 />
+                <label class="btn btn--ghost btn--xs btn--logo-upload">
+                  <span v-if="modelImagePreview">Cambiar Foto</span>
+                  <span v-else>Subir Foto</span>
+                  <input type="file" accept="image/*" class="file-hidden" @change="onModelImageChange" />
+                </label>
+                <div v-if="modelImagePreview" class="logo-preview-wrap">
+                  <img :src="modelImagePreview" alt="Foto modelo" class="logo-preview-img logo-preview-img--sm" />
+                  <button type="button" class="logo-clear-btn" title="Quitar foto" @click="clearModelImage">✕</button>
+                </div>
                 <button type="submit" class="btn btn--primary btn--xs" :disabled="saving">
                   Guardar modelo
                 </button>
@@ -645,6 +726,15 @@ onMounted(load)
                       class="field__input field__input--sm"
                       autofocus
                     />
+                    <label class="btn btn--ghost btn--xs btn--logo-upload">
+                      <span v-if="modelImagePreview">Cambiar Foto</span>
+                      <span v-else>Subir Foto</span>
+                      <input type="file" accept="image/*" class="file-hidden" @change="onModelImageChange" />
+                    </label>
+                    <div v-if="modelImagePreview" class="logo-preview-wrap">
+                      <img :src="modelImagePreview" alt="Foto modelo" class="logo-preview-img logo-preview-img--sm" />
+                      <button type="button" class="logo-clear-btn" title="Quitar foto" @click="clearModelImage">✕</button>
+                    </div>
                     <button type="submit" class="btn btn--primary btn--xs" :disabled="saving">
                       Guardar
                     </button>
@@ -665,6 +755,7 @@ onMounted(load)
                     <span class="tree__chevron tree__chevron--sm">
                       {{ expandedModelIds.has(model.id) ? '▼' : '▶' }}
                     </span>
+                    <img v-if="model.image_url" :src="model.image_url" :alt="model.name" class="model-thumb-img" />
                     <span class="tree__model-name">{{ model.name }}</span>
                   </button>
 
@@ -1276,6 +1367,89 @@ onMounted(load)
 .btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+/* ── Logos y Fotos ───────────────────────────────────────────────────────── */
+.brand-logo-img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 50%;
+  padding: 2px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.brand-logo-placeholder {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  color: var(--blue-2);
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.model-thumb-img {
+  width: 36px;
+  height: 24px;
+  object-fit: contain;
+  border-radius: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.file-hidden {
+  display: none;
+}
+
+.btn--logo-upload {
+  cursor: pointer;
+  align-self: center;
+}
+
+.logo-preview-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+}
+
+.logo-preview-img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--blue);
+  padding: 2px;
+}
+
+.logo-preview-img--sm {
+  width: 32px;
+  height: 32px;
+}
+
+.logo-clear-btn {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  background: var(--danger);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
 }
 
 @media (max-width: 640px) {

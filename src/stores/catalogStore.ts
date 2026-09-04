@@ -197,6 +197,19 @@ export const useCatalogStore = defineStore('catalog', {
       this.loadParts()
     },
 
+    /**
+     * Aplica un auto completo como filtro (lo que hace un favorito de "Mis
+     * autos"). Los tres campos se fijan juntos y se consulta UNA vez: con los
+     * toggles sueltos serían tres `loadParts` seguidos, y el primero además
+     * borraría el modelo. Cualquier campo vacío no restringe.
+     */
+    setVehicleFilter(v: { brand: string; model?: string | null; motor?: string | null }) {
+      this.vehicleBrand = v.brand
+      this.vehicleModel = v.model ?? ''
+      this.motor = v.motor ?? ''
+      this.loadParts()
+    },
+
     clearFilters() {
       this.search = ''
       this.searchInResults = ''

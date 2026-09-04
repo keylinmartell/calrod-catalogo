@@ -26,16 +26,27 @@ export function useAdminVehicleModels() {
     return data as VehicleModel
   }
 
-  /** Solo renombra: mover un modelo de marca sería otra operación (y otro slug). */
+  /** Permite actualizar nombre, slug e imagen del modelo. */
   async function updateVehicleModel(
     id: string,
-    input: { name: string; slug: string },
+    input: { name: string; slug: string; image_url?: string | null },
   ): Promise<void> {
     const { error } = await supabase
       .from('vehicle_models')
       .update(input)
       .eq('id', id)
     if (error) throw error
+  }
+
+  async function uploadModelImage(file: File, slug: string): Promise<string> {
+    const ext = file.name.split('.').pop() || 'png'
+    const path = `vehicle-models/${slug}-${crypto.randomUUID().slice(0, 8)}.${ext}`
+    const { error } = await supabase.storage
+      .from('part-images')
+      .upload(path, file, { upsert: true, contentType: file.type })
+    if (error) throw error
+    const { data } = supabase.storage.from('part-images').getPublicUrl(path)
+    return data.publicUrl
   }
 
   async function deleteVehicleModel(id: string): Promise<void> {
@@ -78,6 +89,7 @@ export function useAdminVehicleModels() {
     createVehicleModel,
     updateVehicleModel,
     deleteVehicleModel,
+    uploadModelImage,
     fetchUsageCounts,
     fetchMotorCounts,
   }
