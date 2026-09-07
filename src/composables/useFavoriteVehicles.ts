@@ -1,6 +1,7 @@
 import { computed, effectScope, ref, watch } from 'vue'
 import { supabase } from '@/services/supabase'
 import { useAuthStore } from '@/stores/authStore'
+import { useNotification } from '@/composables/useNotification'
 import {
   favoriteVehicleKey,
   toFavoriteVehicle,
@@ -198,13 +199,12 @@ async function insertInDb(
 
 export function useFavoriteVehicles() {
   const auth = useAuthStore()
+  const { showAuthAlert } = useNotification()
 
   /**
-   * Carga la lista según haya sesión o no. Con sesión, además sube a la cuenta
-   * los favoritos que se hubieran marcado antes de entrar (sin duplicar los que
-   * ya estaban). El navegador solo se limpia de lo que sí llegó a la cuenta: si
-   * la subida falla, esos autos siguen en localStorage y a la vista, en lugar de
-   * desaparecer sin que nadie se entere.
+   * Carga la lista según haya sesión. Sin sesión, la lista permanece vacía
+   * (se requiere iniciar sesión para guardar favoritos). Al iniciar sesión,
+   * se leen de la base de datos Supabase (user_vehicles) y se sincronizan pendientes si existían.
    */
   async function load() {
     loading.value = true
@@ -213,7 +213,7 @@ export function useFavoriteVehicles() {
       const userId = await resolveUserId()
       if (!userId) {
         dbReady.value = false
-        favorites.value = readLocal()
+        favorites.value = []
         return
       }
 
@@ -231,8 +231,6 @@ export function useFavoriteVehicles() {
             uploaded = await insertInDb(userId, pending)
           } catch (insertErr) {
             stuck = pending
-            error.value =
-              'No pudimos subir a tu cuenta los autos guardados en este navegador. Siguen aquí; inténtalo de nuevo más tarde.'
             console.warn('[CalRod] No se pudieron sincronizar pendientes a BD:', insertErr)
           }
         }
@@ -243,12 +241,12 @@ export function useFavoriteVehicles() {
         dbReady.value = false
         console.warn('[CalRod] BD user_vehicles no disponible o requiere migración 0021:', dbErr)
         error.value =
-          'No pudimos leer los autos de tu cuenta. Se están mostrando los de este navegador.'
-        favorites.value = readLocal()
+          'No pudimos leer los autos de tu cuenta. Inténtalo de nuevo más tarde.'
+        favorites.value = []
       }
     } catch (e) {
       dbReady.value = false
-      favorites.value = readLocal()
+      favorites.value = []
       console.error('[CalRod] favoritos load:', e)
     } finally {
       loading.value = false
@@ -264,8 +262,7 @@ export function useFavoriteVehicles() {
     if (!sessionScope) {
       sessionScope = effectScope(true)
       sessionScope.run(() => {
-        // Al entrar, los favoritos locales pasan a la cuenta; al salir, la lista
-        // vuelve a ser la del navegador (los de la cuenta no se quedan a la vista).
+        // Al entrar, se cargan los favoritos de la cuenta; al salir, se vacían.
         watch(
           () => auth.session?.user.id ?? null,
           () => void load(),
@@ -283,27 +280,23 @@ export function useFavoriteVehicles() {
     return favorites.value.some((x) => favoriteVehicleKey(x) === key)
   }
 
-  /** Marca un auto. Si ya estaba, no hace nada (el UNIQUE de 0021 lo respalda). */
+  /** Marca un auto. Requiere estar autenticado; si no, emite una alerta instantánea. */
   async function add(f: Omit<FavoriteVehicle, 'id'>): Promise<void> {
-    if (!f.brandId || isFavorite(f)) return
+    if (!f.brandId) return
     error.value = null
     const userId = await resolveUserId()
 
     if (!userId) {
-      console.info(
-        '[CalRod] Modo invitado: guardando favorito en localStorage del navegador. Inicia sesión para guardarlo en tu cuenta de BD.',
-      )
-      const list = [...favorites.value, { ...f, id: null }]
-      favorites.value = list
-      persistLocalPart(list)
+      showAuthAlert('Debes iniciar sesión para agregar vehículos a tus favoritos.')
       return
     }
+
+    if (isFavorite(f)) return
 
     try {
       const [row] = await insertInDb(userId, [{ ...f, id: null }])
       if (!row) {
-        // Sin fila de vuelta: la cuenta es la fuente, así que se relee en lugar
-        // de inventar un favorito local que en realidad ya quedó guardado.
+        // Sin fila de vuelta: la cuenta es la fuente, así que se relee
         await load()
         return
       }
@@ -315,16 +308,12 @@ export function useFavoriteVehicles() {
         await load()
         return
       }
-      console.warn('[CalRod] favoritos add en BD falló (guardando en local):', e)
-      error.value =
-        'No pudimos guardar el auto en tu cuenta. Quedó guardado solo en este navegador.'
-      const list = [...favorites.value, { ...f, id: null }]
-      favorites.value = list
-      persistLocalPart(list)
+      console.warn('[CalRod] favoritos add en BD falló:', e)
+      error.value = 'No pudimos guardar el auto en tu cuenta. Inténtalo de nuevo.'
     }
   }
 
-  /** Quita un auto de favoritos (de la cuenta si vive ahí, del navegador si no). */
+  /** Quita un auto de favoritos de la cuenta. */
   async function remove(f: FavoriteVehicle): Promise<void> {
     error.value = null
     const key = favoriteVehicleKey(f)
@@ -336,8 +325,6 @@ export function useFavoriteVehicles() {
         .delete()
         .eq('id', f.id)
       if (err) {
-        // Si la fila sigue en la BD, sacarla de la vista solo la haría reaparecer
-        // al recargar: mejor decirlo y dejar el auto donde está.
         console.warn('[CalRod] favoritos remove en BD falló:', err)
         error.value = 'No pudimos quitar el auto de tu cuenta. Inténtalo de nuevo.'
         return
@@ -351,6 +338,11 @@ export function useFavoriteVehicles() {
 
   /** Alterna: marca el auto si no estaba, lo quita si ya era favorito. */
   async function toggle(f: Omit<FavoriteVehicle, 'id'>): Promise<void> {
+    const userId = await resolveUserId()
+    if (!userId) {
+      showAuthAlert('Debes iniciar sesión para agregar vehículos a tus favoritos.')
+      return
+    }
     const key = favoriteVehicleKey(f)
     const existing = favorites.value.find((x) => favoriteVehicleKey(x) === key)
     if (existing) await remove(existing)

@@ -7,6 +7,7 @@ import { useParts } from '@/composables/useParts'
 import { useFavoriteVehicles } from '@/composables/useFavoriteVehicles'
 import { useAuthPanel } from '@/composables/useAuthPanel'
 import { useAuthStore } from '@/stores/authStore'
+import { useNotification } from '@/composables/useNotification'
 import VehicleSelectorModal from '@/components/catalog/VehicleSelectorModal.vue'
 import {
   favoriteVehicleKey,
@@ -22,9 +23,10 @@ const store = useCatalogStore()
 const { vehicleBrands } = storeToRefs(store)
 const { vehicleBrand, vehicleModel, motor, setVehicleFilter } = useFilters()
 const { fetchVehicleModels, fetchVehicleMotors } = useParts()
-const { favorites, error, storage, ensureLoaded, isFavorite, toggle, remove } =
+const { favorites, error, ensureLoaded, isFavorite, toggle, remove } =
   useFavoriteVehicles()
 const { openPanel } = useAuthPanel()
+const { showAuthAlert } = useNotification()
 const auth = useAuthStore()
 
 ensureLoaded()
@@ -140,6 +142,12 @@ function applyFavorite(f: FavoriteVehicle) {
 }
 
 async function onMark(e: Event, candidate: Omit<FavoriteVehicle, 'id'>) {
+  if (!auth.isAuthenticated) {
+    const el = e.target as HTMLInputElement | null
+    if (el) el.checked = false
+    showAuthAlert('Debes iniciar sesión para agregar vehículos a tus favoritos.')
+    return
+  }
   await toggle(candidate)
   const el = e.target as HTMLInputElement | null
   if (el) el.checked = isFavorite(candidate)
@@ -321,7 +329,12 @@ async function onMark(e: Event, candidate: Omit<FavoriteVehicle, 'id'>) {
 
     <!-- Autos guardados: marcar la casilla filtra el catálogo con ese auto. -->
     <p v-if="!favorites.length" class="favs__empty">
-      Aún no has guardado autos. Márcalos y filtra el catálogo con un clic.
+      <template v-if="auth.isAuthenticated">
+        Aún no has guardado autos. Márcalos y filtra el catálogo con un clic.
+      </template>
+      <template v-else>
+        <button type="button" class="favs__link" @click="openPanel('login')">Inicia sesión</button> para guardar tus autos favoritos en tu garaje.
+      </template>
     </p>
     <ul v-else class="favs__saved">
       <li
@@ -352,23 +365,11 @@ async function onMark(e: Event, candidate: Omit<FavoriteVehicle, 'id'>) {
 
     <p v-if="error" class="favs__error">{{ error }}</p>
 
-    <!-- Sin cuenta los favoritos viven en el navegador: se dice, no se esconde.
-         Y con cuenta, si el guardado no llegó a la BD, también se dice. -->
-    <p v-if="favorites.length && storage !== 'db'" class="favs__hint">
-      <template v-if="auth.isAuthenticated">
-        {{
-          storage === 'mixed'
-            ? 'Algunos de estos autos no llegaron a tu cuenta y siguen solo en este navegador.'
-            : 'Estos autos siguen solo en este navegador: no pudimos guardarlos en tu cuenta.'
-        }}
-      </template>
-      <template v-else>
-        Guardados en este navegador.
-        <button type="button" class="favs__link" @click="openPanel('login')">
-          Inicia sesión
-        </button>
-        para tenerlos en todos tus dispositivos.
-      </template>
+    <p v-if="!auth.isAuthenticated" class="favs__hint">
+      <button type="button" class="favs__link" @click="openPanel('login')">
+        Inicia sesión
+      </button>
+      para sincronizar tus vehículos en tu cuenta.
     </p>
 
 

@@ -7,6 +7,7 @@ import { useParts } from '@/composables/useParts'
 import { useFavoriteVehicles } from '@/composables/useFavoriteVehicles'
 import { useAuthStore } from '@/stores/authStore'
 import { useAuthPanel } from '@/composables/useAuthPanel'
+import { useNotification } from '@/composables/useNotification'
 import type {
   FavoriteVehicle,
   VehicleBrand,
@@ -37,9 +38,17 @@ const { favorites, isFavorite, toggle, ensureLoaded, error } =
   useFavoriteVehicles()
 const auth = useAuthStore()
 const { isAuthenticated } = storeToRefs(auth)
-const { openPanel } = useAuthPanel()
+const { open: authPanelOpen, openPanel } = useAuthPanel()
+const { showAuthAlert } = useNotification()
 
 ensureLoaded()
+
+// Si se abre el panel de login, cerramos el modal de vehículos para no solapar
+watch(authPanelOpen, (isAuthOpen) => {
+  if (isAuthOpen && props.open) {
+    close()
+  }
+})
 
 // Pestaña activa: 'saved' (Mis autos guardados) o 'explore' (Agregar / Explorar)
 const activeTab = ref<'saved' | 'explore'>('saved')
@@ -198,6 +207,10 @@ function brandOnlyCandidate(): Omit<FavoriteVehicle, 'id'> | null {
 }
 
 function saveVehicle(candidate: Omit<FavoriteVehicle, 'id'>) {
+  if (!isAuthenticated.value) {
+    showAuthAlert('Debes iniciar sesión para agregar vehículos a tus favoritos.')
+    return
+  }
   void toggle(candidate)
 }
 
@@ -311,7 +324,7 @@ function close() {
                 Guarda tus autos para encontrar repuestos 100% compatibles sin tener que volver a configurar los filtros.
               </p>
               <p v-if="!isAuthenticated" class="vmodal__empty-sub">
-                💡 Modo invitado: se guardarán en este navegador. <button type="button" class="vmodal__inline-auth-btn" @click="openPanel('login')">Inicia sesión</button> para sincronizarlos en la nube y BD.
+                🔒 <button type="button" class="vmodal__inline-auth-btn" @click="openPanel('login')">Inicia sesión</button> para guardar tus autos favoritos en tu cuenta.
               </p>
               <button
                 type="button"

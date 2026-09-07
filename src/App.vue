@@ -7,6 +7,7 @@ import WhatsAppFab from '@/components/layout/WhatsAppFab.vue'
 import CategoryBar from '@/components/catalog/CategoryBar.vue'
 import AppLoader from '@/components/brand/AppLoader.vue'
 import AuthPanel from '@/components/auth/AuthPanel.vue'
+import AppToast from '@/components/common/AppToast.vue'
 import { useAuthStore } from '@/stores/authStore'
 
 const route = useRoute()
@@ -33,6 +34,7 @@ onMounted(() => {
     <AppFooter />
   </div>
   <AuthPanel />
+  <AppToast />
   <WhatsAppFab />
 </template>
 

@@ -258,7 +258,7 @@ watch(open, (isOpen) => {
 .auth-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 3000;
+  z-index: 100010;
   display: flex;
   justify-content: flex-end;
   background: var(--overlay);
