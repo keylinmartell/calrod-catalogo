@@ -98,11 +98,22 @@ const { booting: show } = useAppLoading()
 }
 
 :root[data-theme='light'] .loader-tire {
-  --al-r0: #3a4049;  --al-r1: #23272e;  --al-r2: #101318;  --al-r3: #030405;
-  --al-rim0: #ffffff; --al-rim1: #d3d8df; --al-rim2: #949ba6; --al-rim3: #5b626d;
-  --al-sp0: #ffffff; --al-sp1: #b9bec7; --al-sp2: #626975;
-  --al-h0: #ffffff;  --al-h1: #cbd0d7;  --al-h2: #767d89;
-  --al-tread: #030405;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.2));
+  --al-r0: #3a3f47;
+  --al-r1: #1f2227;
+  --al-r2: #0f1114;
+  --al-r3: #040507;
+  --al-rim0: #f8fafc;
+  --al-rim1: #c4ccd8;
+  --al-rim2: #7b8595;
+  --al-rim3: #303744;
+  --al-sp0: #ffffff;
+  --al-sp1: #a8b3c4;
+  --al-sp2: #424b5a;
+  --al-h0: #ffffff;
+  --al-h1: #a8b3c4;
+  --al-h2: #303744;
+  --al-tread: #000000;
 }
 
 @keyframes loader-tire-spin {

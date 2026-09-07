@@ -16,6 +16,7 @@ import {
   type VehicleModel,
   type VehicleMotor,
 } from '@/types/part'
+import GearSpinner from '@/components/brand/GearSpinner.vue'
 
 const store = useCatalogStore()
 const { vehicleBrands } = storeToRefs(store)
@@ -247,7 +248,10 @@ async function onMark(e: Event, candidate: Omit<FavoriteVehicle, 'id'>) {
         {{ pickedBrand.name }}
       </button>
 
-      <p v-if="childLoading" class="favs__empty">Cargando…</p>
+      <p v-if="childLoading" class="favs__empty">
+        <GearSpinner :size="24" />
+        <span>Cargando…</span>
+      </p>
       <p v-else-if="childError" class="favs__error">{{ childError }}</p>
       <template v-else>
         <p class="favs__hint">

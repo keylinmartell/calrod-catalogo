@@ -267,14 +267,14 @@ onBeforeUnmount(() => {
 .hero {
   position: relative;
   overflow: hidden;
-  padding-block: var(--space-7) var(--space-5);
+  padding-block: var(--space-4) var(--space-4);
   border-bottom: 1px solid var(--border);
 }
 
 .hero__inner {
   display: grid;
-  grid-template-columns: 1.4fr 0.9fr;
-  gap: var(--space-7);
+  grid-template-columns: 1.35fr 0.9fr;
+  gap: var(--space-5);
   align-items: center;
   position: relative;
   z-index: 1;
@@ -285,10 +285,11 @@ onBeforeUnmount(() => {
 }
 
 .hero__title {
-  font-size: clamp(1.9rem, 4vw, 3rem);
+  font-size: clamp(1.35rem, 2.4vw, 2.1rem);
   font-weight: 800;
   letter-spacing: -0.02em;
-  max-width: 16ch;
+  line-height: 1.16;
+  max-width: 22ch;
 }
 
 .hero__title-grad {
@@ -300,14 +301,17 @@ onBeforeUnmount(() => {
 
 .hero__lead {
   color: var(--charcoal);
-  font-size: 1.05rem;
-  max-width: 48ch;
-  margin-block: var(--space-4) var(--space-5);
+  font-size: 0.92rem;
+  max-width: 44ch;
+  margin-block: var(--space-2) var(--space-3);
+  line-height: 1.4;
 }
 
 /* Botón CTA del hero: mismo botón, icono + texto centrados. */
 .hero__cta {
   gap: var(--space-2);
+  padding: 9px 18px;
+  font-size: 0.88rem;
 }
 
 .hero__cta-icon {
@@ -353,6 +357,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: var(--space-5);
   padding-block: var(--space-5) var(--space-7);
+  scroll-margin-top: calc(var(--header-h) + 64px);
 }
 
 .catalog__layout {
@@ -439,7 +444,7 @@ onBeforeUnmount(() => {
 @media (max-width: 860px) {
   .hero__inner {
     grid-template-columns: 1fr;
-    gap: var(--space-6);
+    gap: var(--space-4);
   }
 
   /* En móvil el mapa no va inline: se ve dentro del dialog. */
@@ -447,14 +452,12 @@ onBeforeUnmount(() => {
     display: none;
   }
 
-  /* Sin el mapa inline, el hero queda muy alto: recortamos el aire inferior
-     y el superior del catálogo para que las piezas queden más cerca del CTA. */
   .hero {
-    padding-block: var(--space-6) var(--space-5);
+    padding-block: var(--space-4) var(--space-3);
   }
 
   .catalog {
-    padding-block: var(--space-5);
+    padding-block: var(--space-4);
   }
 }
 

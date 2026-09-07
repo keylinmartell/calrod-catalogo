@@ -13,6 +13,7 @@ import type {
   VehicleModel,
   VehicleMotor,
 } from '@/types/part'
+import GearSpinner from '@/components/brand/GearSpinner.vue'
 
 const props = defineProps<{
   open: boolean
@@ -32,7 +33,7 @@ const {
   motor: currentMotor,
 } = useFilters()
 const { fetchVehicleModels, fetchVehicleMotors } = useParts()
-const { favorites, isFavorite, toggle, ensureLoaded, storage, error, load } =
+const { favorites, isFavorite, toggle, ensureLoaded, error } =
   useFavoriteVehicles()
 const auth = useAuthStore()
 const { isAuthenticated } = storeToRefs(auth)
@@ -200,10 +201,7 @@ function saveVehicle(candidate: Omit<FavoriteVehicle, 'id'>) {
   void toggle(candidate)
 }
 
-/** Vuelve a intentar la subida a la cuenta de lo que quedó en el navegador. */
-function retrySync() {
-  void load()
-}
+
 
 function removeFavorite(e: Event, fav: FavoriteVehicle) {
   e.stopPropagation()
@@ -265,7 +263,7 @@ function close() {
                 <circle cx="16.5" cy="14.5" r="1.5"/>
               </svg>
             </div>
-            <div>
+            <div class="vmodal__head-text">
               <h2 id="vmodal-title" class="vmodal__title">
                 {{ activeTab === 'saved' ? 'Mis Autos Favoritos' : 'Agregar vehículo a mis autos' }}
               </h2>
@@ -329,52 +327,6 @@ function close() {
               <div class="vmodal__saved-header">
                 <div class="vmodal__saved-title-wrap">
                   <span class="vmodal__saved-label">Vehículos en tu garaje</span>
-                  <span class="vmodal__saved-badge">{{ favorites.length }} {{ favorites.length === 1 ? 'guardado' : 'guardados' }}</span>
-
-                  <!-- El estado se lee de los datos (¿tiene fila en la BD?), no
-                       de "hay sesión": con sesión el guardado puede fallar. -->
-                  <span v-if="storage === 'db'" class="vmodal__sync-tag vmodal__sync-tag--cloud" title="Guardado en tu cuenta y sincronizado en base de datos">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="vmodal__sync-icon">
-                      <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>
-                    </svg>
-                    <span>Guardado en BD</span>
-                  </span>
-                  <span
-                    v-else-if="storage === 'mixed'"
-                    class="vmodal__sync-tag vmodal__sync-tag--local"
-                    title="Algunos autos no llegaron a tu cuenta y siguen solo en este navegador"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="vmodal__sync-icon">
-                      <path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
-                    </svg>
-                    <span>Algunos solo en este navegador</span>
-                  </span>
-                  <button
-                    v-else-if="isAuthenticated"
-                    type="button"
-                    class="vmodal__sync-tag vmodal__sync-tag--local"
-                    title="No pudimos guardarlos en tu cuenta: siguen en este navegador. Haz clic para reintentar"
-                    @click="retrySync"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="vmodal__sync-icon">
-                      <path d="M21 12a9 9 0 1 1-3.5-7.1M21 3v6h-6"/>
-                    </svg>
-                    <span>Sin guardar en BD · Reintentar</span>
-                  </button>
-                  <button
-                    v-else
-                    type="button"
-                    class="vmodal__sync-tag vmodal__sync-tag--local"
-                    title="Guardado localmente en este navegador. Haz clic para iniciar sesión y sincronizar en base de datos"
-                    @click="openPanel('login')"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="vmodal__sync-icon">
-                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
-                      <line x1="8" y1="21" x2="16" y2="21"/>
-                      <line x1="12" y1="17" x2="12" y2="21"/>
-                    </svg>
-                    <span>Local (Inicia sesión para BD)</span>
-                  </button>
                 </div>
                 <button
                   type="button"
@@ -513,6 +465,7 @@ function close() {
               </div>
 
               <div v-if="loadingModels" class="vmodal__state-box">
+                <GearSpinner :size="36" />
                 <p>Cargando catálogo de {{ selectedBrand?.name }}…</p>
               </div>
 
@@ -776,6 +729,13 @@ function close() {
   display: flex;
   align-items: center;
   gap: 14px;
+  min-width: 0;
+  flex: 1;
+}
+
+.vmodal__head-text {
+  min-width: 0;
+  flex: 1;
 }
 
 .vmodal__badge-icon {
@@ -802,12 +762,18 @@ function close() {
   color: #f8fafc;
   letter-spacing: -0.01em;
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .vmodal__subtitle {
   font-size: 0.8rem;
   color: #94a3b8;
   margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .vmodal__close {
@@ -1125,7 +1091,8 @@ function close() {
   flex-direction: column;
   gap: 6px;
   transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-  min-height: 125px;
+  height: 100%;
+  min-height: 164px;
 }
 
 .vexplore-card:hover {
@@ -1264,7 +1231,8 @@ function close() {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin-top: auto;
+  flex-grow: 1;
+  justify-content: flex-end;
 }
 
 .vexplore-card__title {

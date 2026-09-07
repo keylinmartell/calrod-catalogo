@@ -95,26 +95,38 @@ if (!play.value) {
   --tw-tread: #050506;
 }
 
-/* Modo claro: sobre fondo casi blanco, los grises medios se lavaban. Subimos
-   el contraste — goma en grises azulados profundos (llanta oscura de verdad) y
-   aro/rayos plateados brillantes con más rango tonal — y bajamos la opacidad
-   para que siga siendo marca de agua sutil, no una mancha. */
+/* Modo claro: llanta mucho más oscura, con tonos negro profundo y grafito de alto impacto */
 :root[data-theme='light'] .tire-watermark {
-  opacity: 0.3;
-  --tw-r0: #3a4049;  --tw-r1: #23272e;  --tw-r2: #101318;  --tw-r3: #030405;
-  --tw-rim0: #ffffff; --tw-rim1: #d3d8df; --tw-rim2: #949ba6; --tw-rim3: #5b626d;
-  --tw-sp0: #ffffff; --tw-sp1: #b9bec7; --tw-sp2: #626975;
-  --tw-h0: #ffffff;  --tw-h1: #cbd0d7;  --tw-h2: #767d89;
-  --tw-tread: #030405;
+  opacity: 0.85;
+  --tw-r0: #2d323b;
+  --tw-r1: #16191f;
+  --tw-r2: #090b0e;
+  --tw-r3: #000000;
+  --tw-rim0: #858e9c;
+  --tw-rim1: #4e5563;
+  --tw-rim2: #242933;
+  --tw-rim3: #0d1015;
+  --tw-sp0: #858e9c;
+  --tw-sp1: #414754;
+  --tw-sp2: #14171e;
+  --tw-h0: #858e9c;
+  --tw-h1: #414754;
+  --tw-h2: #0d1015;
+  --tw-tread: #000000;
 }
 
-/* Reposo = misma posición/tamaño que tenía el engrane (WrenchWatermark). */
+:root[data-theme='light'] .tire-rotate {
+  filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.22));
+}
+
+/* Reposo = alineado para que el centro de la llanta coincida con el inicio del texto en escritorio */
 .tire-travel {
+  --tw-size: clamp(240px, 28vw, 360px);
   position: absolute;
-  top: -46px;
-  left: clamp(-40px, 4vw, 96px);
-  width: clamp(300px, 36vw, 470px);
-  height: clamp(300px, 36vw, 470px);
+  top: -36px;
+  left: calc(max(var(--space-5), (100% - var(--container)) / 2 + var(--space-5)) - (var(--tw-size) / 2));
+  width: var(--tw-size);
+  height: var(--tw-size);
   /* Estado previo a la animación: fuera de pantalla e invisible, igual que el
      frame 0% de tire-travel. Así no hay "parpadeo" mientras esperamos la carga. */
   transform: translateX(92vw);

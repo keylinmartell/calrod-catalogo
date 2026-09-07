@@ -113,8 +113,8 @@ const directionsUrl = () =>
     color-mix(in srgb, var(--surface) 85%, black)
   );
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-5) var(--space-5) var(--space-4);
+  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4) var(--space-3);
   overflow: hidden;
   z-index: 1;
 }
@@ -122,24 +122,24 @@ const directionsUrl = () =>
 /* HUD corner marks — mismo lenguaje visual que HeroPanel. */
 .corner {
   position: absolute;
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   border: 1.5px solid rgba(74, 123, 184, 0.35);
 }
-.corner.tl { top: 10px; left: 10px; border-right: none; border-bottom: none; }
-.corner.tr { top: 10px; right: 10px; border-left: none; border-bottom: none; }
-.corner.bl { bottom: 10px; left: 10px; border-right: none; border-top: none; }
-.corner.br { bottom: 10px; right: 10px; border-left: none; border-top: none; }
+.corner.tl { top: 8px; left: 8px; border-right: none; border-bottom: none; }
+.corner.tr { top: 8px; right: 8px; border-left: none; border-bottom: none; }
+.corner.bl { bottom: 8px; left: 8px; border-right: none; border-top: none; }
+.corner.br { bottom: 8px; right: 8px; border-left: none; border-top: none; }
 
 .map-header {
   display: flex;
   align-items: center;
   gap: 8px;
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   letter-spacing: 0.09em;
   color: var(--charcoal);
-  margin-bottom: var(--space-4);
+  margin-bottom: var(--space-2);
   padding-left: 2px;
 }
 
@@ -157,7 +157,7 @@ const directionsUrl = () =>
 }
 
 .map-canvas {
-  height: 200px;
+  height: 140px;
   border-radius: var(--radius-sm);
   overflow: hidden;
   /* Integra las teselas claras de OSM al tema oscuro. */
@@ -174,19 +174,19 @@ const directionsUrl = () =>
   justify-content: space-between;
   align-items: center;
   gap: var(--space-3);
-  margin-top: var(--space-4);
-  padding-top: var(--space-3);
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
   border-top: 1px dashed var(--border);
 }
 .address {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   color: var(--charcoal);
   max-width: 60%;
   line-height: 1.35;
 }
 .directions-btn {
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--blue-2);
   text-decoration: none;
   white-space: nowrap;
@@ -196,9 +196,9 @@ const directionsUrl = () =>
 }
 
 .map-attribution {
-  margin-top: var(--space-2);
+  margin-top: 2px;
   font-family: var(--font-mono);
-  font-size: 0.58rem;
+  font-size: 0.55rem;
   color: var(--text-faint);
   text-align: right;
 }

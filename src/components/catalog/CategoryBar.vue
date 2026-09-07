@@ -7,34 +7,44 @@ import SearchBar from '@/components/catalog/SearchBar.vue'
 const { categories, activeCategories, toggleCategory } = useFilters()
 
 const scroller = ref<HTMLElement | null>(null)
+const isHovered = ref(false)
+const isInteracting = ref(false)
+let touchTimeout: number | undefined
+
+function onTouchStart() {
+  isInteracting.value = true
+  if (touchTimeout) clearTimeout(touchTimeout)
+}
+
+function onTouchEnd() {
+  if (touchTimeout) clearTimeout(touchTimeout)
+  touchTimeout = window.setTimeout(() => {
+    isInteracting.value = false
+  }, 1200)
+}
 
 /**
- * En escritorio: mientras el cursor está sobre la barra, la rueda SIEMPRE
- * desplaza horizontal — aunque ya estés en el inicio o el final. El scroll
- * vertical de la página solo vuelve cuando el cursor sale de la barra.
+ * En escritorio: mientras el cursor está sobre la barra, la rueda desplaza horizontal.
  */
 function onWheel(e: WheelEvent) {
   const el = scroller.value
   if (!el) return
-  // Gestos horizontales de trackpad ya funcionan solos; no los tocamos.
   if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return
-
-  // Si no hay overflow horizontal, no hay nada que capturar.
   if (el.scrollWidth <= el.clientWidth) return
 
-  // Normalizamos: algunos ratones reportan deltaY en líneas (deltaMode=1) o
-  // páginas (2), con valores pequeños. Sin esto el scroll sería casi nulo.
   const factor = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? el.clientWidth : 1
   const delta = e.deltaY * factor
 
-  // Capturamos siempre: la barra "atrapa" la rueda hasta que el cursor la deje.
   e.preventDefault()
   el.scrollBy({ left: delta, behavior: 'auto' })
+
+  isInteracting.value = true
+  if (touchTimeout) clearTimeout(touchTimeout)
+  touchTimeout = window.setTimeout(() => {
+    isInteracting.value = false
+  }, 1000)
 }
 
-// Registramos el listener manualmente con { passive: false }: si se declara en
-// el template (@wheel), el navegador puede marcarlo passive y entonces
-// preventDefault() se ignora — por eso el scroll horizontal "no funcionaba".
 watch(scroller, (el, prev) => {
   prev?.removeEventListener('wheel', onWheel)
   el?.addEventListener('wheel', onWheel, { passive: false })
@@ -45,6 +55,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  if (touchTimeout) clearTimeout(touchTimeout)
   scroller.value?.removeEventListener('wheel', onWheel)
 })
 </script>
@@ -54,6 +65,8 @@ onBeforeUnmount(() => {
     v-if="categories.length"
     class="catbar"
     aria-label="Categorías / sistemas"
+    @mouseenter="isHovered = true"
+    @mouseleave="isHovered = false"
   >
     <div class="container catbar__wrap">
       <!-- Buscador: solo en móvil, encima de las categorías. -->
@@ -61,18 +74,47 @@ onBeforeUnmount(() => {
         <SearchBar />
       </div>
 
-      <div ref="scroller" class="catbar__inner">
-        <button
-          v-for="cat in categories"
-          :key="cat.id"
-          class="catbar__item"
-          :class="{ 'catbar__item--active': activeCategories.includes(cat.id) }"
-          :aria-pressed="activeCategories.includes(cat.id)"
-          @click="toggleCategory(cat.id)"
+      <div
+        ref="scroller"
+        class="catbar__inner"
+        @touchstart.passive="onTouchStart"
+        @touchend.passive="onTouchEnd"
+      >
+        <div
+          class="catbar__track"
+          :class="{ 'is-paused': isHovered || isInteracting }"
         >
-          <CategoryIcon :slug="cat.slug" class="catbar__icon" />
-          <span class="catbar__label">{{ cat.name }}</span>
-        </button>
+          <!-- Grupo principal de categorías -->
+          <div class="catbar__group">
+            <button
+              v-for="cat in categories"
+              :key="`g1-${cat.id}`"
+              class="catbar__item"
+              :class="{ 'catbar__item--active': activeCategories.includes(cat.id) }"
+              :aria-pressed="activeCategories.includes(cat.id)"
+              @click="toggleCategory(cat.id)"
+            >
+              <CategoryIcon :slug="cat.slug" :size="20" class="catbar__icon" />
+              <span class="catbar__label">{{ cat.name }}</span>
+            </button>
+          </div>
+
+          <!-- Grupo duplicado idéntico para ticker continuo infinito -->
+          <div class="catbar__group" aria-hidden="true">
+            <button
+              v-for="cat in categories"
+              :key="`g2-${cat.id}`"
+              class="catbar__item"
+              :class="{ 'catbar__item--active': activeCategories.includes(cat.id) }"
+              :aria-pressed="activeCategories.includes(cat.id)"
+              tabindex="-1"
+              @click="toggleCategory(cat.id)"
+            >
+              <CategoryIcon :slug="cat.slug" :size="20" class="catbar__icon" />
+              <span class="catbar__label">{{ cat.name }}</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </nav>
@@ -81,116 +123,204 @@ onBeforeUnmount(() => {
 <style scoped>
 .catbar {
   background: var(--surface-glass);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: var(--header-h);
   z-index: 15;
 }
 
-/* El buscador dentro de la barra solo aparece en móvil/tablet (el del header
-   colapsa ahí). En escritorio queda oculto. */
+/* El buscador dentro de la barra solo aparece en móvil/tablet. */
 .catbar__search {
   display: none;
 }
 
 .catbar__inner {
   display: flex;
-  gap: var(--space-2);
   overflow-x: auto;
   overflow-y: hidden;
   padding-block: var(--space-3);
   -webkit-overflow-scrolling: touch;
-  /* El swipe horizontal no debe encadenar al scroll de la página. */
   overscroll-behavior-x: contain;
-  /* Scroll-snap suave: cada chip "ancla" al desplazar (patrón estándar móvil). */
-  scroll-snap-type: x proximity;
-  scroll-padding-left: var(--space-2);
-  scrollbar-width: none; /* Firefox: barra oculta, se navega por swipe/rueda. */
+  scrollbar-width: none;
   -ms-overflow-style: none;
-  /* Fade en los extremos: pista visual de que hay más chips para desplazar. */
+  /* Fade elegante en los bordes para una transición suave del ticker */
   -webkit-mask-image: linear-gradient(
     to right,
     transparent 0,
-    #000 var(--space-4),
-    #000 calc(100% - var(--space-5)),
+    #000 32px,
+    #000 calc(100% - 32px),
     transparent 100%
   );
   mask-image: linear-gradient(
     to right,
     transparent 0,
-    #000 var(--space-4),
-    #000 calc(100% - var(--space-5)),
+    #000 32px,
+    #000 calc(100% - 32px),
     transparent 100%
   );
 }
 
-/* WebKit (Chrome/Safari/Edge): ocultamos la barra nativa tosca. */
 .catbar__inner::-webkit-scrollbar {
   display: none;
 }
 
-.catbar__item {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-shrink: 0;
-  scroll-snap-align: start;
-  padding: var(--space-2) var(--space-4);
-  border-radius: 999px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  color: var(--cream);
-  font-size: 0.88rem;
-  font-weight: 500;
-  white-space: nowrap;
-  transition: all 0.15s ease;
+/* Ticker continuo */
+.catbar__track {
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: cat-ticker 44s linear infinite;
 }
 
-.catbar__item:hover {
-  border-color: var(--border-strong);
+.catbar__track:hover,
+.catbar__track.is-paused,
+.catbar__track:focus-within {
+  animation-play-state: paused;
+}
+
+.catbar__group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding-right: var(--space-5);
+  flex-shrink: 0;
+}
+
+@keyframes cat-ticker {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+/* Diseño limpio, abierto y moderno — sin cajas/cápsulas pesadas */
+.catbar__item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  padding: 8px 14px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--silver);
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+/* Línea indicadora luminosa inferior */
+.catbar__item::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 12px;
+  right: 12px;
+  height: 2px;
+  background: var(--blue-2);
+  border-radius: 2px;
+  transform: scaleX(0);
+  opacity: 0;
+  box-shadow: 0 0 8px var(--blue-2);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
 }
 
 .catbar__icon {
   color: var(--chrome);
-  transition: color 0.15s ease;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.catbar__item:hover {
+  color: #ffffff;
+  background: rgba(236, 238, 242, 0.05);
+  transform: translateY(-1px);
+}
+
+.catbar__item:hover .catbar__icon {
+  color: var(--blue-2);
+  transform: scale(1.12);
+}
+
+.catbar__item:hover::after {
+  transform: scaleX(0.5);
+  opacity: 0.5;
 }
 
 .catbar__item--active {
-  background: rgba(26, 61, 110, 0.14);
-  border-color: var(--blue);
-  color: var(--blue-2);
+  color: #ffffff;
+  font-weight: 600;
+  background: rgba(74, 123, 184, 0.12);
 }
 
 .catbar__item--active .catbar__icon {
   color: var(--blue-2);
 }
 
+.catbar__item--active::after {
+  transform: scaleX(1);
+  opacity: 1;
+}
+
+/* Modo claro */
+:root[data-theme='light'] .catbar__item {
+  color: var(--charcoal);
+}
+
+:root[data-theme='light'] .catbar__item:hover {
+  color: var(--cream);
+  background: rgba(0, 0, 0, 0.04);
+}
+
+:root[data-theme='light'] .catbar__item--active {
+  color: var(--blue);
+  background: rgba(26, 61, 110, 0.07);
+}
+
+:root[data-theme='light'] .catbar__item--active .catbar__icon {
+  color: var(--blue);
+}
+
+:root[data-theme='light'] .catbar__item::after {
+  background: var(--blue);
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .catbar__track {
+    animation: none;
+  }
+}
+
 @media (max-width: 860px) {
-  /* Buscador encima de las categorías en móvil/tablet. */
   .catbar__search {
     display: block;
     padding-top: var(--space-3);
   }
   .catbar__inner {
     padding-top: var(--space-2);
+    padding-bottom: var(--space-2);
   }
 }
 
 @media (max-width: 520px) {
-  /* Chips más compactos que el buscador: menos padding, texto e ícono chicos. */
-  .catbar__inner {
-    gap: var(--space-1);
+  .catbar__group {
+    gap: var(--space-3);
+    padding-right: var(--space-3);
   }
 
   .catbar__item {
     gap: 6px;
-    padding: 5px var(--space-2);
-    font-size: 0.72rem;
-    border-radius: var(--radius);
+    padding: 6px 10px;
+    font-size: 0.82rem;
   }
 
-  /* El CategoryIcon recibe size=22 por prop; lo achicamos vía CSS en móvil. */
   .catbar__icon {
     width: 16px;
     height: 16px;
