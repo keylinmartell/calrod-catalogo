@@ -189,6 +189,7 @@ export function useFilters() {
   return {
     categories,
     brands,
+    vehicleBrands,
     search,
     searchInResults,
     viewMode,

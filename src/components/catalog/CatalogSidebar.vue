@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useFilters } from '@/composables/useFilters'
+import CategoryIcon from '@/components/catalog/CategoryIcon.vue'
 
 const {
   categories,
   brands,
+  vehicleBrands,
   activeCategories,
   activeBrands,
   vehicleBrand,
@@ -21,6 +23,21 @@ const {
   clearFilters,
   displayParts,
 } = useFilters()
+
+// Mapa para obtener el logo_url de una marca de vehículo a partir de su nombre
+const vehicleBrandLogoMap = computed(() => {
+  const map = new Map<string, string>()
+  for (const vb of vehicleBrands.value) {
+    if (vb.logo_url) {
+      map.set(vb.name.toLowerCase(), vb.logo_url)
+    }
+  }
+  return map
+})
+
+function getVehicleBrandLogo(name: string): string | undefined {
+  return vehicleBrandLogoMap.value.get(name.toLowerCase())
+}
 
 // Búsquedas internas para filtrar las listas largas de opciones en el sidebar
 const brandSearch = ref('')
@@ -129,6 +146,16 @@ const currentBannerTitle = computed(() => {
             :checked="vehicleBrand.toLowerCase() === b.toLowerCase()"
             @change="toggleVehicleBrand(b)"
           />
+          <div class="facet-brand-badge">
+            <img
+              v-if="getVehicleBrandLogo(b)"
+              :src="getVehicleBrandLogo(b)!"
+              :alt="b"
+              class="facet-brand-logo"
+              loading="lazy"
+            />
+            <span v-else class="facet-brand-initials">{{ b.slice(0, 2).toUpperCase() }}</span>
+          </div>
           <span class="facet-name">{{ b }}</span>
         </label>
         <p v-if="!filteredBrandOptions.length" class="facet-empty">
@@ -197,10 +224,10 @@ const currentBannerTitle = computed(() => {
       </div>
     </div>
 
-    <!-- Sección: Producto / Categoría -->
+    <!-- Sección: Categorías -->
     <div v-if="categories.length" class="facet-group">
       <div class="facet-group__header">
-        <h3 class="facet-group__title">Producto</h3>
+        <h3 class="facet-group__title">Categorías</h3>
         <button
           v-if="activeCategories.length"
           type="button"
@@ -217,7 +244,7 @@ const currentBannerTitle = computed(() => {
           v-model="categorySearch"
           type="text"
           class="facet-search__input"
-          placeholder="Buscar tipo de repuesto..."
+          placeholder="Buscar categoría..."
           aria-label="Buscar categoría"
         />
         <svg
@@ -245,6 +272,7 @@ const currentBannerTitle = computed(() => {
             :checked="activeCategories.includes(c.id)"
             @change="toggleCategory(c.id)"
           />
+          <CategoryIcon :slug="c.slug" :size="18" class="facet-cat-icon" />
           <span class="facet-name">{{ c.name }}</span>
           <span v-if="categoryCounts[c.id]" class="facet-count mono">
             ({{ categoryCounts[c.id] }})
@@ -280,6 +308,16 @@ const currentBannerTitle = computed(() => {
             :checked="activeBrands.includes(b.id)"
             @change="toggleBrand(b.id)"
           />
+          <div class="facet-brand-badge">
+            <img
+              v-if="b.logo_url"
+              :src="b.logo_url"
+              :alt="b.name"
+              class="facet-brand-logo"
+              loading="lazy"
+            />
+            <span v-else class="facet-brand-initials">{{ b.name.slice(0, 2).toUpperCase() }}</span>
+          </div>
           <span class="facet-name">{{ b.name }}</span>
           <span v-if="brandCounts[b.id]" class="facet-count mono">
             ({{ brandCounts[b.id] }})
@@ -492,6 +530,63 @@ const currentBannerTitle = computed(() => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.facet-cat-icon {
+  color: var(--chrome);
+  flex-shrink: 0;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.facet-item:hover .facet-cat-icon {
+  color: var(--blue-2);
+  transform: scale(1.1);
+}
+
+.facet-item--active .facet-cat-icon {
+  color: var(--blue-2);
+}
+
+.facet-brand-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  padding: 2px;
+  transition: border-color 0.15s ease;
+}
+
+.facet-item:hover .facet-brand-badge {
+  border-color: var(--border-strong);
+}
+
+.facet-item--active .facet-brand-badge {
+  border-color: var(--blue-2);
+  background: rgba(26, 61, 110, 0.2);
+}
+
+.facet-brand-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.facet-brand-initials {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--charcoal);
+  line-height: 1;
+}
+
+.facet-item--active .facet-brand-initials {
+  color: var(--blue-2);
 }
 
 .facet-count {
