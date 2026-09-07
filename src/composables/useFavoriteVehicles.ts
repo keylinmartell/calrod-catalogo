@@ -97,6 +97,7 @@ function readLocal(): FavoriteVehicle[] {
         brandName: f.brandName ?? '',
         modelId: f.modelId ?? null,
         modelName: f.modelName ?? '',
+        modelImageUrl: f.modelImageUrl ?? null,
         motorId: f.motorId ?? null,
         motorName: f.motorName ?? '',
       }))
@@ -188,6 +189,7 @@ async function insertInDb(
       brandName: src?.brandName ?? '',
       modelId: row.vehicle_model_id ?? null,
       modelName: src?.modelName ?? '',
+      modelImageUrl: src?.modelImageUrl ?? null,
       motorId: row.motor_id ?? null,
       motorName: src?.motorName ?? '',
     }

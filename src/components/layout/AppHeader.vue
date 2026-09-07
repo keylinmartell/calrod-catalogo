@@ -401,10 +401,29 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
   }
 }
 
+/* Móvil: compacta la barra para que la navegación quepa junto al logo. */
+@media (max-width: 600px) {
+  .header__nav {
+    gap: var(--space-2);
+  }
+  /* "Catálogo" es redundante con el logo (ambos llevan al inicio): fuera en móvil. */
+  .header__link {
+    display: none;
+  }
+  /* El botón de autos pasa a solo icono; el título queda en el tooltip/aria. */
+  .header__favs-label {
+    display: none;
+  }
+  .header__favs-btn {
+    gap: 5px;
+    padding-inline: 10px;
+  }
+}
+
 @media (max-width: 520px) {
   .brand__logo {
-    height: 148px;
-    margin-block: -44px;
+    height: 130px;
+    margin-block: -36px;
   }
   /* Pega el logo al borde izquierdo: contrarresta el padding-inline del
      .container para ganar espacio en la barra estrecha. */
@@ -412,7 +431,39 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
     margin-left: calc(-1 * var(--space-4));
   }
   .header__inner {
-    gap: var(--space-3);
+    gap: var(--space-2);
+  }
+  .header__access {
+    padding-inline: var(--space-3);
+    font-size: 0.85rem;
+    height: 34px;
+  }
+  .header__theme, .header__avatar {
+    width: 34px;
+    height: 34px;
+  }
+}
+
+@media (max-width: 400px) {
+  .brand__logo {
+    height: 100px;
+    margin-block: -24px;
+  }
+  .header__nav {
+    gap: var(--space-1);
+  }
+  .header__access {
+    padding-inline: var(--space-2);
+    font-size: 0.8rem;
+    height: 32px;
+  }
+  .header__theme, .header__avatar {
+    width: 32px;
+    height: 32px;
+  }
+  .header__favs-btn {
+    padding-inline: 8px;
+    height: 32px;
   }
 }
 </style>

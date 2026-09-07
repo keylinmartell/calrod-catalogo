@@ -165,6 +165,7 @@ function modelCandidate(m: VehicleModel): Omit<FavoriteVehicle, 'id'> {
     brandName: selectedBrand.value?.name ?? '',
     modelId: m.id,
     modelName: m.name,
+    modelImageUrl: m.image_url ?? null,
     motorId: null,
     motorName: '',
   }
@@ -176,6 +177,7 @@ function motorCandidate(mo: VehicleMotor): Omit<FavoriteVehicle, 'id'> {
     brandName: selectedBrand.value?.name ?? '',
     modelId: null,
     modelName: '',
+    modelImageUrl: null,
     motorId: mo.id,
     motorName: mo.name,
   }
@@ -188,6 +190,7 @@ function brandOnlyCandidate(): Omit<FavoriteVehicle, 'id'> | null {
     brandName: selectedBrand.value.name,
     modelId: null,
     modelName: '',
+    modelImageUrl: null,
     motorId: null,
     motorName: '',
   }
@@ -421,7 +424,19 @@ function close() {
 
                   <!-- Visual Hero -->
                   <div class="vexplore-card__visual">
-                    <div v-if="fav.motorName && !fav.modelName" class="vexplore-card__motor-art">
+                    <img
+                      v-if="fav.modelImageUrl"
+                      :src="fav.modelImageUrl"
+                      :alt="fav.modelName"
+                      class="vexplore-card__model-img"
+                    />
+                    <img
+                      v-else-if="brandLogoFor(fav.brandName)"
+                      :src="brandLogoFor(fav.brandName)!"
+                      :alt="fav.brandName"
+                      class="vexplore-card__brand-logo"
+                    />
+                    <div v-else-if="fav.motorName && !fav.modelName" class="vexplore-card__motor-art">
                       <span class="vexplore-card__gear-icon">⚙️</span>
                     </div>
                     <svg v-else class="vexplore-card__car-art" viewBox="0 0 160 60" fill="currentColor">
@@ -610,6 +625,12 @@ function close() {
                       :alt="model.name"
                       class="vexplore-card__model-img"
                     />
+                    <img
+                      v-else-if="selectedBrand?.logo_url"
+                      :src="selectedBrand.logo_url"
+                      :alt="selectedBrand.name"
+                      class="vexplore-card__brand-logo"
+                    />
                     <svg v-else class="vexplore-card__car-art" viewBox="0 0 160 60" fill="currentColor">
                       <path d="M148 40c-2 0-3.8 1.2-4.5 3-.9 2.5-3.5 4.2-6.5 4.2-3.8 0-7-3.1-7-7s3.1-7 7-7c1.5 0 3 .5 4.1 1.4.6.5 1.5.4 2-.2l2.8-3.2c.4-.5.4-1.3-.1-1.7C142 26 136 23.5 129 23.5h-15L99 9.5H45l-10 14H15c-5.5 0-10 4.5-10 10v11c0 1.4 1.1 2.5 2.5 2.5h11c.6 4.4 4.4 7.8 9.5 7.8s8.9-3.4 9.5-7.8h58c.6 4.4 4.4 7.8 9.5 7.8s8.9-3.4 9.5-7.8h14c1.4 0 2.5-1.1 2.5-2.5v-2.5c0-1.4-1.1-2.5-2.5-2.5zM27 52c-2.8 0-5-2.2-5-5s2.2-5 5-5 5 2.2 5 5-2.2 5-5 5zm58-30H50l8-9h27v9zm10 0V13h19l8.5 9H95zm32 30c-2.8 0-5-2.2-5-5s2.2-5 5-5 5 2.2 5 5-2.2 5-5 5z"/>
                     </svg>
@@ -661,7 +682,13 @@ function close() {
                   </div>
 
                   <div class="vexplore-card__visual">
-                    <div class="vexplore-card__motor-art">
+                    <img
+                      v-if="selectedBrand?.logo_url"
+                      :src="selectedBrand.logo_url"
+                      :alt="selectedBrand.name"
+                      class="vexplore-card__brand-logo"
+                    />
+                    <div v-else class="vexplore-card__motor-art">
                       <span class="vexplore-card__gear-icon">⚙️</span>
                     </div>
                   </div>
@@ -755,12 +782,12 @@ function close() {
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  background: linear-gradient(135deg, var(--blue-2), var(--blue));
   color: #fff;
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.4);
+  box-shadow: 0 4px 16px rgba(26, 61, 110, 0.4);
 }
 
 .vmodal__badge-icon svg {
@@ -820,7 +847,7 @@ function close() {
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #60a5fa;
+  color: var(--blue-2);
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -829,8 +856,8 @@ function close() {
 }
 
 .vmodal__back-btn:hover {
-  background: rgba(37, 99, 235, 0.2);
-  border-color: #3b82f6;
+  background: rgba(26, 61, 110, 0.2);
+  border-color: var(--blue-2);
   color: #fff;
   transform: translateX(-2px);
 }
@@ -890,9 +917,9 @@ function close() {
 .vmodal__saved-badge {
   font-size: 0.75rem;
   font-weight: 700;
-  color: #60a5fa;
-  background: rgba(37, 99, 235, 0.15);
-  border: 1px solid rgba(37, 99, 235, 0.3);
+  color: var(--blue-2);
+  background: var(--blue-dim);
+  border: 1px solid var(--blue);
   padding: 2px 8px;
   border-radius: 999px;
 }
@@ -914,9 +941,9 @@ function close() {
 }
 
 .btn-add-vehicle:hover {
-  background: rgba(37, 99, 235, 0.15);
-  border-color: #3b82f6;
-  color: #60a5fa;
+  background: rgba(26, 61, 110, 0.15);
+  border-color: var(--blue-2);
+  color: var(--blue-2);
   transform: translateY(-1px);
 }
 
@@ -964,8 +991,8 @@ function close() {
 }
 
 .vmodal__search-field:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.3);
+  border-color: var(--blue-2);
+  box-shadow: 0 0 0 2px rgba(26, 61, 110, 0.3);
 }
 
 .vmodal__search-field::placeholder {
@@ -1012,9 +1039,9 @@ function close() {
 }
 
 .vbrand-item--active {
-  background: #2563eb !important;
+  background: var(--blue) !important;
   color: #ffffff !important;
-  box-shadow: 0 3px 12px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 3px 12px rgba(26, 61, 110, 0.35);
 }
 
 .vbrand-item--active .vbrand-item__count {
@@ -1102,9 +1129,9 @@ function close() {
 }
 
 .vexplore-card:hover {
-  border-color: #3b82f6;
+  border-color: var(--blue-2);
   transform: translateY(-2px);
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45), 0 0 16px rgba(37, 99, 235, 0.22);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45), 0 0 16px rgba(26, 61, 110, 0.22);
 }
 
 .vexplore-card--saved {
@@ -1113,8 +1140,8 @@ function close() {
 }
 
 .vexplore-card--active-filter {
-  border-color: #3b82f6 !important;
-  box-shadow: 0 0 0 1.5px #3b82f6, 0 8px 20px rgba(37, 99, 235, 0.3) !important;
+  border-color: var(--blue-2) !important;
+  box-shadow: 0 0 0 1.5px var(--blue-2), 0 8px 20px rgba(26, 61, 110, 0.3) !important;
 }
 
 .vexplore-card__header {
@@ -1193,7 +1220,7 @@ function close() {
 .vexplore-card__car-art {
   width: 70px;
   height: 30px;
-  color: #3b82f6;
+  color: var(--blue-2);
   opacity: 0.55;
   transition: opacity 0.15s ease, transform 0.15s ease;
 }
@@ -1219,7 +1246,7 @@ function close() {
 .vexplore-card__brand-initials {
   font-size: 0.95rem;
   font-weight: 800;
-  color: #60a5fa;
+  color: var(--blue-2);
 }
 
 .vexplore-card__motor-art {
@@ -1269,9 +1296,9 @@ function close() {
   font-weight: 700;
   padding: 2px 7px;
   border-radius: 4px;
-  background: rgba(37, 99, 235, 0.15);
-  color: #60a5fa;
-  border: 1px solid rgba(37, 99, 235, 0.25);
+  background: var(--blue-dim);
+  color: var(--blue-2);
+  border: 1px solid var(--blue);
   transition: all 0.15s ease;
 }
 
@@ -1282,9 +1309,9 @@ function close() {
 }
 
 .vexplore-pill--action {
-  background: rgba(37, 99, 235, 0.2) !important;
-  color: #93c5fd !important;
-  border-color: rgba(59, 130, 246, 0.4) !important;
+  background: var(--blue-dim) !important;
+  color: var(--blue-2) !important;
+  border-color: var(--blue) !important;
 }
 
 .vexplore-pill--applied {
@@ -1301,19 +1328,19 @@ function close() {
   gap: 8px;
   padding: 10px 22px;
   border-radius: 999px;
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  background: linear-gradient(135deg, var(--blue) 0%, var(--blue-2) 100%);
   color: #ffffff;
   font-weight: 700;
   font-size: 0.88rem;
   font-family: inherit;
   cursor: pointer;
   border: none;
-  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.4);
+  box-shadow: 0 4px 16px rgba(26, 61, 110, 0.4);
   transition: all 0.15s ease;
 }
 
 .btn-primary-action:hover {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(135deg, var(--blue-2) 0%, var(--blue) 100%);
   transform: translateY(-1px);
 }
 
@@ -1357,11 +1384,11 @@ function close() {
   width: 60px;
   height: 60px;
   border-radius: 50%;
-  background: rgba(37, 99, 235, 0.12);
-  color: #60a5fa;
+  background: rgba(26, 61, 110, 0.12);
+  color: var(--blue-2);
   display: grid;
   place-items: center;
-  box-shadow: 0 0 25px rgba(37, 99, 235, 0.2);
+  box-shadow: 0 0 25px rgba(26, 61, 110, 0.2);
 }
 
 .vmodal__empty-icon-wrap svg {
@@ -1488,7 +1515,7 @@ function close() {
   background: none;
   border: none;
   padding: 0;
-  color: #60a5fa;
+  color: var(--blue-2);
   font-weight: 600;
   font-size: inherit;
   font-family: inherit;
@@ -1497,7 +1524,7 @@ function close() {
 }
 
 .vmodal__inline-auth-btn:hover {
-  color: #93c5fd;
+  color: var(--blue-2);
 }
 
 /* ── Responsive ───────────────────────────────────────────────────────────── */
@@ -1513,6 +1540,70 @@ function close() {
   }
   .vexplore-grid {
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  }
+}
+
+/* Teléfono: la ventana pasa a hoja casi a pantalla completa y las cabeceras
+   internas dejan de forzar una sola fila (se apilan / envuelven). */
+@media (max-width: 560px) {
+  .vmodal-backdrop {
+    padding: var(--space-2);
+  }
+  .vmodal {
+    max-width: 100%;
+    max-height: 94vh;
+    border-radius: 16px;
+  }
+  .vmodal__body {
+    min-height: 0;
+    max-height: none;
+    flex: 1;
+  }
+
+  .vmodal__head {
+    padding: 14px 16px 12px;
+  }
+  .vmodal__head-main {
+    gap: 10px;
+  }
+  .vmodal__badge-icon,
+  .vmodal__back-btn {
+    width: 34px;
+    height: 34px;
+  }
+  .vmodal__title {
+    font-size: 1.05rem;
+  }
+  .vmodal__subtitle {
+    font-size: 0.74rem;
+  }
+  /* El botón de texto "← Mis autos" duplica la flecha de volver: sobra en móvil. */
+  .vmodal__head-actions .btn-add-vehicle {
+    display: none;
+  }
+
+  .vmodal__saved-view {
+    padding: 16px;
+  }
+  .vmodal__saved-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  .vmodal__saved-title-wrap {
+    flex-wrap: wrap;
+  }
+  .vmodal__saved-header .btn-add-vehicle {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .vexplore-grid {
+    padding: 14px;
+    gap: 10px;
+  }
+  .vmodal__models-toolbar {
+    padding: 12px 14px 8px;
   }
 }
 </style>

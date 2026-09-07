@@ -90,6 +90,7 @@ const brandOnly = computed(() => {
     brandName: b.name,
     modelId: null,
     modelName: '',
+    modelImageUrl: null,
     motorId: null,
     motorName: '',
   }
@@ -101,6 +102,7 @@ function modelCandidate(m: VehicleModel) {
     brandName: pickedBrand.value?.name ?? '',
     modelId: m.id,
     modelName: m.name,
+    modelImageUrl: m.image_url ?? null,
     motorId: null,
     motorName: '',
   }
@@ -112,6 +114,7 @@ function motorCandidate(mo: VehicleMotor) {
     brandName: pickedBrand.value?.name ?? '',
     modelId: null,
     modelName: '',
+    modelImageUrl: null,
     motorId: mo.id,
     motorName: mo.name,
   }

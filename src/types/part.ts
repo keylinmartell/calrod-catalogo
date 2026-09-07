@@ -390,6 +390,7 @@ export interface FavoriteVehicle {
   brandName: string
   modelId: string | null
   modelName: string
+  modelImageUrl: string | null
   motorId: string | null
   motorName: string
 }
@@ -421,6 +422,7 @@ export function toFavoriteVehicle(v: UserVehicle): FavoriteVehicle {
     brandName: v.vehicle_brands?.name ?? v.vehicle_models?.vehicle_brands?.name ?? '',
     modelId: v.vehicle_model_id,
     modelName: v.vehicle_models?.name ?? '',
+    modelImageUrl: v.vehicle_models?.image_url ?? null,
     motorId: v.motor_id,
     motorName: v.vehicle_motors?.name ?? '',
   }
