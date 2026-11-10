@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useParts } from '@/composables/useParts'
 import { useAppLoading } from '@/composables/useAppLoading'
+import { useAuthStore } from '@/stores/authStore'
 import { money, partWholesale, retailPrice } from '@/composables/usePartPricing'
 import type { Part } from '@/types/part'
 import {
@@ -22,6 +23,12 @@ const route = useRoute()
 const router = useRouter()
 const { fetchPartById } = useParts()
 const { finishBoot } = useAppLoading()
+const auth = useAuthStore()
+
+function goAdmin(action: 'edit' | 'duplicate') {
+  if (!part.value) return
+  router.push({ path: '/admin', query: { [action]: part.value.id } })
+}
 
 const part = ref<Part | null>(null)
 const loading = ref(true)
@@ -150,6 +157,14 @@ watch(
         </div>
 
         <h1 class="name">{{ part.name }}</h1>
+        <div v-if="auth.isAdmin" class="admin-bar">
+          <button type="button" class="admin-bar__btn" @click="goAdmin('edit')">
+            Editar
+          </button>
+          <button type="button" class="admin-bar__btn" @click="goAdmin('duplicate')">
+            Duplicar
+          </button>
+        </div>
         <p v-if="part.description" class="tagline">{{ part.description }}</p>
 
         <!-- Datos de la pieza: filas etiqueta/valor, sin caja alrededor. -->
@@ -219,6 +234,28 @@ watch(
 </template>
 
 <style scoped>
+.admin-bar {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.admin-bar__btn {
+  padding: var(--space-2) var(--space-4);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--cream);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.admin-bar__btn:hover {
+  border-color: var(--blue);
+  color: var(--blue-2);
+}
+
 /*
  * Ficha sin cajas anidadas. Antes cada zona era un rectángulo con borde (foto,
  * compra, especificaciones, compatibilidad) y encima cada compatibilidad traía

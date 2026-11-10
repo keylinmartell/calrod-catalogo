@@ -10,6 +10,7 @@ const props = defineProps<{
   highlightCompat?: string
 }>()
 
+
 const quantity = ref(1)
 
 function dec() {

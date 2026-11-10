@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { useParts } from '@/composables/useParts'
 import { useAdminParts } from '@/composables/useAdminParts'
@@ -18,7 +19,9 @@ const auth = useAuthStore()
 // fetchPartById, que es el único select que trae part_images (0020) — sin él el
 // formulario abriría con una sola foto y al guardar borraría las demás.
 const { fetchParts, fetchPartById } = useParts()
-const { deletePart } = useAdminParts()
+const { deletePart, duplicatePart } = useAdminParts()
+const route = useRoute()
+const router = useRouter()
 
 const parts = ref<Part[]>([])
 const loading = ref(false)
@@ -83,6 +86,32 @@ async function editPart(part: Part) {
   }
 }
 
+/**
+ * Duplica la pieza (backend: copia fila, specs, compatibilidad y fotos) y abre
+ * la copia en el formulario para actualizarla.
+ */
+async function duplicate(part: Part) {
+  loading.value = true
+  error.value = null
+  try {
+    const full = await fetchPartById(part.id)
+    if (!full) {
+      error.value = `“${part.name}” ya no existe. Recarga la lista.`
+      return
+    }
+    const newId = await duplicatePart(full)
+    const copy = await fetchPartById(newId)
+    if (!copy) throw new Error('copia no encontrada')
+    editing.value = copy
+    view.value = 'edit'
+  } catch (e) {
+    console.error('[CalRod] admin duplicate:', e)
+    error.value = 'No pudimos duplicar la pieza. ¿Sigue tu sesión activa?'
+  } finally {
+    loading.value = false
+  }
+}
+
 async function removePart(part: Part) {
   if (!confirm(`¿Borrar "${part.name}"? Esta acción no se puede deshacer.`)) return
   try {
@@ -106,7 +135,19 @@ function onCancel() {
   editing.value = null
 }
 
-onMounted(loadList)
+onMounted(async () => {
+  await loadList()
+  // Llegada desde el catálogo: /admin?edit=<id> o /admin?duplicate=<id>.
+  const { edit, duplicate: dup } = route.query
+  const target = (id: unknown) =>
+    typeof id === 'string' ? ({ id, name: 'la pieza' } as Part) : null
+  const p = target(edit) ?? target(dup)
+  if (p) {
+    router.replace({ query: {} })
+    if (typeof edit === 'string') await editPart(p)
+    else await duplicate(p)
+  }
+})
 </script>
 
 <template>
@@ -234,6 +275,9 @@ onMounted(loadList)
             <div class="row__actions">
               <button class="btn btn--ghost btn--sm" @click="editPart(part)">
                 Editar
+              </button>
+              <button class="btn btn--ghost btn--sm" @click="duplicate(part)">
+                Duplicar
               </button>
               <button class="btn btn--danger btn--sm" @click="removePart(part)">
                 Borrar

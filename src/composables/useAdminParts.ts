@@ -1,4 +1,5 @@
 import { supabase } from '@/services/supabase'
+import { partGallery } from '@/types/part'
 import type {
   CompatInput,
   Part,
@@ -196,7 +197,19 @@ export function useAdminParts() {
     const urls: string[] = []
     for (const draft of drafts) {
       if (!draft.file) {
-        if (draft.url) urls.push(draft.url)
+        if (!draft.url) continue
+        // Foto existente en otra carpeta (la pieza cambió de código, o se creó sin
+        // código con carpeta aleatoria): se copia a la carpeta nueva. Si no, el
+        // paso (2) vaciaría la carpeta vieja y la URL quedaría rota.
+        const from = storagePathFromUrl(draft.url)
+        if (from && !from.startsWith(`${safeKey}/`)) {
+          const to = `${safeKey}/${crypto.randomUUID()}`
+          const { error } = await supabase.storage.from(BUCKET).copy(from, to)
+          if (error) throw error
+          urls.push(supabase.storage.from(BUCKET).getPublicUrl(to).data.publicUrl)
+        } else {
+          urls.push(draft.url)
+        }
         continue
       }
       const path = `${safeKey}/${crypto.randomUUID()}`
@@ -249,7 +262,66 @@ export function useAdminParts() {
     if (error) throw error
   }
 
-  return { createPart, updatePart, deletePart, saveGallery, replaceImages }
+  /**
+   * Duplica una pieza COMPLETA (con galería, specs y compatibilidad) y devuelve
+   * el id de la copia, lista para editarse con updatePart. El código se deja en
+   * null (es UNIQUE) y el nombre lleva " (copia)". Las fotos se copian dentro del
+   * bucket a la carpeta de la copia, así borrar/editar una no afecta a la otra.
+   */
+  async function duplicatePart(source: Part): Promise<string> {
+    const input: PartInput = {
+      ...toPartInput(source),
+      code: null,
+      name: `${source.name} (copia)`,
+      image_url: null,
+    }
+    const specs: SpecInput[] = (source.part_specs ?? []).map((s) => ({
+      label: s.label,
+      value: s.value,
+    }))
+    const compat: CompatInput[] = (source.part_compatibility ?? []).map((c) => ({
+      vehicle_brand_id:
+        c.vehicle_brand_id ??
+        c.vehicle_models?.vehicle_brand_id ??
+        c.vehicle_motors?.vehicle_brand_id ??
+        null,
+      vehicle_model_id: c.vehicle_model_id,
+      motor_id: c.motor_id,
+      year_from: c.year_from,
+      year_to: c.year_to,
+    }))
+
+    const newId = await createPart(input, specs, compat)
+
+    try {
+      const urls: string[] = []
+      for (const url of partGallery(source)) {
+        const from = storagePathFromUrl(url)
+        if (!from) {
+          urls.push(url) // imagen externa: se reutiliza la misma URL
+          continue
+        }
+        const to = `${newId}/${crypto.randomUUID()}`
+        const { error } = await supabase.storage.from(BUCKET).copy(from, to)
+        if (error) throw error
+        urls.push(supabase.storage.from(BUCKET).getPublicUrl(to).data.publicUrl)
+      }
+      if (urls.length) {
+        const { error } = await supabase
+          .from('parts')
+          .update({ image_url: urls[0] })
+          .eq('id', newId)
+        if (error) throw error
+        await replaceImages(newId, urls)
+      }
+    } catch (e) {
+      // La copia ya existe; si fallan las fotos se conserva sin ellas.
+      console.error('[CalRod] duplicatePart fotos:', e)
+    }
+    return newId
+  }
+
+  return { createPart, updatePart, deletePart, duplicatePart, saveGallery, replaceImages }
 }
 
 /** Convierte un Part cargado de la BD en el PartInput que edita el formulario. */

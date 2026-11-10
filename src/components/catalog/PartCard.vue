@@ -7,6 +7,7 @@ import { partWholesale } from '@/composables/usePartPricing'
 
 const props = defineProps<{ part: Part }>()
 
+
 // Precio mayorista (0014): segundo precio por unidad al llevar varias piezas.
 // null cuando la pieza no tiene mayorista o no conviene contra el detalle.
 const wholesale = computed(() => partWholesale(props.part))
