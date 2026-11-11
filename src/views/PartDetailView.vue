@@ -5,6 +5,7 @@ import { useParts } from '@/composables/useParts'
 import { useAppLoading } from '@/composables/useAppLoading'
 import { useAuthStore } from '@/stores/authStore'
 import { money, partWholesale, retailPrice } from '@/composables/usePartPricing'
+import { getStockStatus, openWhatsAppOrder } from '@/composables/useWhatsApp'
 import type { Part } from '@/types/part'
 import {
   AVAILABILITY_LABELS,
@@ -54,6 +55,19 @@ const price = computed(() => {
 
 const wholesale = computed(() => (part.value ? partWholesale(part.value) : null))
 
+const stockInfo = computed(() => (part.value ? getStockStatus(part.value) : null))
+const isStockAvailable = computed(() => stockInfo.value?.hasStock ?? false)
+const orderBtnLabel = computed(() => (isStockAvailable.value ? 'Encargar más' : 'Encargar'))
+
+function onOrderClick() {
+  if (!part.value) return
+  openWhatsAppOrder({
+    partName: part.value.name,
+    partCode: part.value.code,
+    hasStock: isStockAvailable.value,
+  })
+}
+
 /** Primera compatibilidad en una línea: "Toyota Corolla · 1.8L (2015–2020)". */
 const compatSummary = computed(() => {
   const rows = part.value?.part_compatibility ?? []
@@ -75,12 +89,6 @@ const compatSummary = computed(() => {
       .replace(' · (', ' ('),
     rest: rows.length - 1,
   }
-})
-
-/** Unidades en existencia (0018); null cuando no hay nada que anunciar. */
-const stock = computed(() => {
-  const q = part.value?.stock_qty
-  return typeof q === 'number' && q > 0 ? q : null
 })
 
 function goToCompat() {
@@ -151,7 +159,7 @@ watch(
           <span class="stock-chip" :class="`stock-chip--${part.availability}`">
             <span class="stock-chip__dot"></span>
             {{ AVAILABILITY_LABELS[part.availability] }}
-            <span v-if="stock" class="stock-chip__qty mono">· {{ stock }} u.</span>
+            <span v-if="stockInfo" class="stock-chip__qty mono">· {{ stockInfo.qty }} en existencia</span>
           </span>
           <span v-if="part.code" class="code mono">{{ part.code }}</span>
         </div>
@@ -218,6 +226,42 @@ watch(
             {{ wholesale.minQty }} u.
             <span class="price__wholesale-save">(−{{ wholesale.saveFmt }} c/u)</span>
           </p>
+        </div>
+
+        <!-- Encargo directo por WhatsApp -->
+        <div class="order-box">
+          <div v-if="stockInfo" class="stock-banner" :class="`stock-banner--${stockInfo.tone}`">
+            <span class="stock-banner__dot" aria-hidden="true"></span>
+            <div class="stock-banner__text">
+              <strong class="stock-banner__title">
+                {{ stockInfo.hasStock ? 'Stock disponible' : 'Sin existencia inmediata' }}
+              </strong>
+              <span class="stock-banner__qty mono">
+                ({{ stockInfo.qty }} {{ stockInfo.qty === 1 ? 'unidad disponible' : 'unidades disponibles' }})
+              </span>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="order-cta-btn"
+            :class="{ 'order-cta-btn--more': isStockAvailable }"
+            @click="onOrderClick"
+          >
+            <svg class="order-cta-btn__icon" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
+              <path
+                d="M16.004 3.2c-7.06 0-12.8 5.74-12.8 12.8 0 2.258.594 4.462 1.72 6.4L3.2 28.8l6.56-1.72a12.74 12.74 0 0 0 6.244 1.62h.006c7.06 0 12.8-5.74 12.8-12.8 0-3.42-1.332-6.634-3.75-9.052A12.72 12.72 0 0 0 16.004 3.2Zm0 23.36h-.004a10.56 10.56 0 0 1-5.384-1.474l-.386-.23-3.894 1.02 1.04-3.796-.252-.39a10.55 10.55 0 0 1-1.616-5.62c0-5.868 4.776-10.64 10.648-10.64a10.57 10.57 0 0 1 7.524 3.12 10.56 10.56 0 0 1 3.116 7.526c0 5.868-4.776 10.64-10.642 10.64Zm5.834-7.964c-.32-.16-1.892-.934-2.184-1.04-.293-.107-.507-.16-.72.16-.213.32-.826 1.04-1.013 1.253-.187.213-.373.24-.693.08-.32-.16-1.35-.498-2.57-1.586-.95-.847-1.592-1.894-1.778-2.214-.187-.32-.02-.493.14-.652.144-.143.32-.373.48-.56.16-.187.213-.32.32-.533.107-.213.053-.4-.027-.56-.08-.16-.72-1.734-.986-2.374-.26-.624-.523-.54-.72-.55l-.613-.01c-.213 0-.56.08-.853.4-.293.32-1.12 1.094-1.12 2.667 0 1.574 1.146 3.094 1.306 3.307.16.213 2.253 3.44 5.46 4.826.763.33 1.358.527 1.822.674.766.244 1.463.21 2.014.127.615-.092 1.892-.774 2.158-1.52.267-.747.267-1.387.187-1.52-.08-.134-.293-.214-.613-.374Z"
+              />
+            </svg>
+            <span>{{ orderBtnLabel }}</span>
+          </button>
+          <div class="order-notice">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="10" />
+              <polyline points="12 6 12 12 16 14" />
+            </svg>
+            <span>Los encargos están disponibles en aproximadamente <strong>15 días</strong>.</span>
+          </div>
         </div>
       </div>
 
@@ -437,6 +481,116 @@ watch(
 }
 .price__wholesale b { color: var(--cream); }
 .price__wholesale-save { color: var(--ok); }
+
+/* ---------- Bloque de encargo ---------- */
+.order-box {
+  margin-top: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.stock-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  line-height: 1.3;
+}
+
+.stock-banner__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: currentColor;
+}
+
+.stock-banner--ok {
+  color: var(--ok);
+}
+
+.stock-banner--warn {
+  color: var(--warn);
+}
+
+.stock-banner--out {
+  color: var(--danger);
+}
+
+.stock-banner__text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.stock-banner__title {
+  color: var(--cream);
+  font-weight: 700;
+}
+
+.stock-banner__qty {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+}
+
+.order-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 320px;
+  padding: 12px 20px;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  border-radius: var(--radius);
+  border: 1px solid rgba(37, 211, 102, 0.45);
+  background: #25d366;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(37, 211, 102, 0.3);
+  transition: transform 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.order-cta-btn:hover {
+  background: #20ba59;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(37, 211, 102, 0.4);
+}
+
+.order-cta-btn:active {
+  transform: translateY(0);
+}
+
+.order-cta-btn__icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.order-notice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: var(--charcoal);
+  line-height: 1.4;
+}
+
+.order-notice svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--blue-2);
+}
+
+.order-notice strong {
+  color: var(--cream);
+  font-weight: 600;
+}
 
 /* ---------- bloque técnico ---------- */
 /* Cruza las dos columnas y se divide en dos: la línea del centro es el único

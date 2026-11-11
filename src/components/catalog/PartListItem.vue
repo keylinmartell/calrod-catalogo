@@ -4,11 +4,25 @@ import { RouterLink } from 'vue-router'
 import type { Part } from '@/types/part'
 import { ORIGIN_LABELS } from '@/types/part'
 import { partWholesale } from '@/composables/usePartPricing'
+import { getStockStatus, openWhatsAppOrder } from '@/composables/useWhatsApp'
 
 const props = defineProps<{
   part: Part
   highlightCompat?: string
 }>()
+
+const stockInfo = computed(() => getStockStatus(props.part))
+const isStockAvailable = computed(() => stockInfo.value.hasStock)
+const orderBtnLabel = computed(() => (isStockAvailable.value ? 'Encargar más' : 'Encargar'))
+
+function onOrderClick() {
+  openWhatsAppOrder({
+    partName: props.part.name,
+    partCode: props.part.code,
+    hasStock: isStockAvailable.value,
+    quantity: quantity.value,
+  })
+}
 
 
 const quantity = ref(1)
@@ -112,6 +126,11 @@ const originName = computed(() => {
         <span class="meta-sep">·</span>
         <span class="meta-label">Tipo:</span>
         <span class="meta-val">{{ originName }}</span>
+        <span class="meta-sep">·</span>
+        <span class="stock-pill mono" :class="`stock-pill--${stockInfo.tone}`">
+          <span class="stock-pill__dot" aria-hidden="true"></span>
+          {{ stockInfo.badgeLabel }}
+        </span>
       </div>
     </div>
 
@@ -140,40 +159,65 @@ const originName = computed(() => {
       </div>
     </div>
 
-    <!-- Acciones: selector de cantidad y botón carrito -->
+    <!-- Acciones: selector de cantidad, encargo WhatsApp y ver detalle -->
     <div class="list-item__actions">
-      <div class="qty-stepper">
+      <div class="list-item__actions-row">
+        <div class="qty-stepper">
+          <button
+            type="button"
+            class="qty-btn"
+            aria-label="Disminuir cantidad"
+            @click="dec"
+          >
+            −
+          </button>
+          <span class="qty-val mono">{{ quantity }}</span>
+          <button
+            type="button"
+            class="qty-btn"
+            aria-label="Aumentar cantidad"
+            @click="inc"
+          >
+            +
+          </button>
+        </div>
+
         <button
           type="button"
-          class="qty-btn"
-          aria-label="Disminuir cantidad"
-          @click="dec"
+          class="order-btn"
+          :class="{ 'order-btn--more': isStockAvailable }"
+          :title="`${orderBtnLabel} vía WhatsApp`"
+          @click="onOrderClick"
         >
-          −
+          <svg class="order-btn__icon" viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
+            <path
+              d="M16.004 3.2c-7.06 0-12.8 5.74-12.8 12.8 0 2.258.594 4.462 1.72 6.4L3.2 28.8l6.56-1.72a12.74 12.74 0 0 0 6.244 1.62h.006c7.06 0 12.8-5.74 12.8-12.8 0-3.42-1.332-6.634-3.75-9.052A12.72 12.72 0 0 0 16.004 3.2Zm0 23.36h-.004a10.56 10.56 0 0 1-5.384-1.474l-.386-.23-3.894 1.02 1.04-3.796-.252-.39a10.55 10.55 0 0 1-1.616-5.62c0-5.868 4.776-10.64 10.648-10.64a10.57 10.57 0 0 1 7.524 3.12 10.56 10.56 0 0 1 3.116 7.526c0 5.868-4.776 10.64-10.642 10.64Zm5.834-7.964c-.32-.16-1.892-.934-2.184-1.04-.293-.107-.507-.16-.72.16-.213.32-.826 1.04-1.013 1.253-.187.213-.373.24-.693.08-.32-.16-1.35-.498-2.57-1.586-.95-.847-1.592-1.894-1.778-2.214-.187-.32-.02-.493.14-.652.144-.143.32-.373.48-.56.16-.187.213-.32.32-.533.107-.213.053-.4-.027-.56-.08-.16-.72-1.734-.986-2.374-.26-.624-.523-.54-.72-.55l-.613-.01c-.213 0-.56.08-.853.4-.293.32-1.12 1.094-1.12 2.667 0 1.574 1.146 3.094 1.306 3.307.16.213 2.253 3.44 5.46 4.826.763.33 1.358.527 1.822.674.766.244 1.463.21 2.014.127.615-.092 1.892-.774 2.158-1.52.267-.747.267-1.387.187-1.52-.08-.134-.293-.214-.613-.374Z"
+            />
+          </svg>
+          <span>{{ orderBtnLabel }}</span>
         </button>
-        <span class="qty-val mono">{{ quantity }}</span>
-        <button
-          type="button"
-          class="qty-btn"
-          aria-label="Aumentar cantidad"
-          @click="inc"
+
+        <RouterLink
+          :to="`/pieza/${part.id}`"
+          class="cart-btn"
+          aria-label="Ver detalles"
+          title="Ver detalles"
         >
-          +
-        </button>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="9" cy="21" r="1" />
+            <circle cx="20" cy="21" r="1" />
+            <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+          </svg>
+        </RouterLink>
       </div>
 
-      <RouterLink
-        :to="`/pieza/${part.id}`"
-        class="cart-btn"
-        aria-label="Ver detalles y comprar"
-        title="Ver detalles"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="9" cy="21" r="1" />
-          <circle cx="20" cy="21" r="1" />
-          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+      <p class="order-info">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
         </svg>
-      </RouterLink>
+        <span>Encargos disponibles en ~15 días aprox.</span>
+      </p>
     </div>
   </div>
 </template>
@@ -271,10 +315,39 @@ const originName = computed(() => {
 .list-item__meta {
   display: flex;
   align-items: center;
-  gap: 4px;
+  flex-wrap: wrap;
+  gap: 5px;
   font-size: 0.75rem;
   color: var(--charcoal);
   margin-top: 2px;
+}
+
+.stock-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.stock-pill__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.stock-pill--ok {
+  color: var(--ok);
+}
+
+.stock-pill--warn {
+  color: var(--warn);
+}
+
+.stock-pill--out {
+  color: var(--danger);
 }
 
 .meta-label {
@@ -352,8 +425,67 @@ const originName = computed(() => {
 /* Acciones */
 .list-item__actions {
   display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.list-item__actions-row {
+  display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: var(--space-2);
+}
+
+.order-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 14px;
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(37, 211, 102, 0.4);
+  background: #25d366;
+  color: #fff;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 0.12s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 2px 6px rgba(37, 211, 102, 0.25);
+}
+
+.order-btn:hover {
+  background: #20ba59;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(37, 211, 102, 0.35);
+}
+
+.order-btn:active {
+  transform: translateY(0);
+}
+
+.order-btn__icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.order-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.68rem;
+  color: var(--charcoal);
+  line-height: 1.2;
+}
+
+.order-info svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  color: var(--blue-2);
 }
 
 .qty-stepper {
@@ -363,7 +495,7 @@ const originName = computed(() => {
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   overflow: hidden;
-  height: 36px;
+  height: 38px;
 }
 
 .qty-btn {
@@ -428,7 +560,19 @@ const originName = computed(() => {
 
   .list-item__actions {
     grid-column: 1 / -1;
-    justify-content: flex-end;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .list-item__actions-row {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .order-btn {
+    flex: 1;
+    min-width: 130px;
   }
 }
 </style>

@@ -265,7 +265,7 @@ onMounted(async () => {
               <h2 class="row__name">{{ part.name }}</h2>
               <p class="row__meta mono">
                 {{ part.code }} · {{ priceFmt(part.price) }} ·
-                {{ AVAILABILITY_LABELS[part.availability] }}
+                {{ AVAILABILITY_LABELS[part.availability] }} · {{ part.stock_qty ?? 0 }} en existencia
               </p>
               <p v-if="wholesaleLabel(part)" class="row__meta mono">
                 {{ wholesaleLabel(part) }}

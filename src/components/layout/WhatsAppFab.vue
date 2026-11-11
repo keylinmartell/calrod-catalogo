@@ -1,8 +1,9 @@
 <script setup lang="ts">
+import { WHATSAPP_PHONE } from '@/composables/useWhatsApp'
+
 // Botón flotante de WhatsApp, estilo webs modernas: fijo abajo a la derecha,
 // abre el chat del número del negocio en una pestaña nueva.
-const PHONE = '5356269303'
-const href = `https://wa.me/${PHONE}`
+const href = `https://wa.me/${WHATSAPP_PHONE}`
 </script>
 
 <template>

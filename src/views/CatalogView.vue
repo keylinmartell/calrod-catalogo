@@ -8,7 +8,6 @@ import TireWatermark from '@/components/brand/TireWatermark.vue'
 import GearSpinner from '@/components/brand/GearSpinner.vue'
 import MapPanel from '@/components/catalog/MapPanel.vue'
 import CatalogSidebar from '@/components/catalog/CatalogSidebar.vue'
-import CatalogToolbar from '@/components/catalog/CatalogToolbar.vue'
 import PartListView from '@/components/catalog/PartListView.vue'
 import PartGrid from '@/components/catalog/PartGrid.vue'
 
@@ -162,10 +161,8 @@ onBeforeUnmount(() => {
         <CatalogSidebar />
       </div>
 
-      <!-- Columna derecha: Toolbar + Resultados -->
+      <!-- Columna derecha: Resultados -->
       <div class="catalog__main-col">
-        <CatalogToolbar />
-
         <!-- Estado: cargando -->
         <div v-if="loading" class="state" aria-live="polite">
           <GearSpinner :size="44" />

@@ -1,9 +1,9 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://hmlrgoylsevzlaereeco.supabase.co'
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 
-if (!supabaseUrl || !supabaseAnonKey) {
+if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
   // Falla temprano y claro: sin credenciales el catálogo no puede leer datos.
   console.error(
     '[CalRod] Faltan VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. ' +
@@ -11,7 +11,10 @@ if (!supabaseUrl || !supabaseAnonKey) {
   )
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+export const supabase = createClient(
+  supabaseUrl,
+  supabaseAnonKey || 'placeholder-anon-key',
+  {
   auth: {
     // Guarda la sesión en localStorage y la refresca sola mientras el
     // refresh token siga vivo, así el usuario no pierde la sesión al recargar.
