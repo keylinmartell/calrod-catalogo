@@ -2,7 +2,6 @@
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import type { Part } from '@/types/part'
-import { ORIGIN_LABELS } from '@/types/part'
 import { partWholesale } from '@/composables/usePartPricing'
 import { getStockStatus, openWhatsAppOrder } from '@/composables/useWhatsApp'
 
@@ -68,8 +67,6 @@ const saveFmt = computed(() =>
     : '',
 )
 
-const originLabel = computed(() => ORIGIN_LABELS[props.part.origin_type] ?? '')
-
 const ribbon = computed(() => {
   if (props.part.is_best_deal) return 'MEJOR OFERTA'
   if (stockInfo.value.tone === 'warn') return 'ÚLTIMAS PIEZAS'
@@ -79,7 +76,7 @@ const ribbon = computed(() => {
 
 <template>
   <RouterLink :to="`/pieza/${part.id}`" class="card">
-    <!-- Franja de foto: estudio propio, con aire y sombra de producto flotando -->
+    <!-- Franja de foto: estudio propio, compacta y proporcionada -->
     <div class="card__photo">
       <img
         v-if="part.image_url"
@@ -89,7 +86,11 @@ const ribbon = computed(() => {
         class="card__img"
       />
       <div v-else class="card__img card__img--empty" aria-hidden="true">
-        <span class="mono">Sin imagen</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="card__empty-icon">
+          <circle cx="12" cy="12" r="3.2" />
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+        </svg>
+        <span class="mono">Sin foto</span>
       </div>
 
       <span v-if="offer" class="save-sticker">
@@ -101,31 +102,33 @@ const ribbon = computed(() => {
       </span>
     </div>
 
-    <!-- Cuerpo tipo volante -->
+    <!-- Cuerpo compacto solo con lo indispensable -->
     <div class="card__body">
       <h3 class="card__name">{{ part.name }}</h3>
       <p class="card__sub mono">
-        {{ part.brands?.name ?? '—' }}<template v-if="part.code"> · {{ part.code }}</template><template v-if="originLabel"> · {{ originLabel }}</template>
+        {{ part.brands?.name ?? '—' }}<template v-if="part.code"> · {{ part.code }}</template>
       </p>
 
-      <!-- Precio estilo anuncio: $ chico, entero grande, centavos chicos -->
-      <div class="price">
-        <span v-if="offer" class="price__was mono">{{ originalPriceFmt }}</span>
-        <div class="price__now">
-          <span class="price__symbol">$</span>
-          <span class="price__int">{{ priceParts.int }}</span>
-          <span class="price__cents">{{ priceParts.cents }}</span>
+      <!-- Precio + existencia en una sola fila limpia -->
+      <div class="price-row">
+        <div class="price">
+          <span v-if="offer" class="price__was mono">{{ originalPriceFmt }}</span>
+          <div class="price__now">
+            <span class="price__symbol">$</span>
+            <span class="price__int">{{ priceParts.int }}</span>
+            <span class="price__cents">{{ priceParts.cents }}</span>
+          </div>
+        </div>
+
+        <div class="card__stock mono" :class="`card__stock--${stockInfo.tone}`">
+          <span class="card__stock-dot" aria-hidden="true"></span>
+          <span>{{ stockInfo.cardLabel }}</span>
         </div>
       </div>
-      <p v-if="wholesale" class="card__wholesale mono">
-        Mayorista <b>{{ wholesale.priceFmt }}</b> · {{ wholesale.qtyLabel }}
-      </p>
 
-      <!-- Indicador de existencia estilo tienda / catálogo -->
-      <div class="card__stock mono" :class="`card__stock--${stockInfo.tone}`">
-        <span class="card__stock-dot" aria-hidden="true"></span>
-        <span>{{ stockInfo.cardLabel }}</span>
-      </div>
+      <p v-if="wholesale" class="card__wholesale mono">
+        Mayorista <b>${{ wholesale.price.toFixed(2) }}</b> ({{ wholesale.minQty }}+ u.)
+      </p>
 
       <div class="card__order">
         <button
@@ -143,11 +146,7 @@ const ribbon = computed(() => {
           <span>{{ orderBtnLabel }}</span>
         </button>
         <p class="order-info">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <circle cx="12" cy="12" r="10" />
-            <polyline points="12 6 12 12 16 14" />
-          </svg>
-          <span>Encargos disponibles en ~15 días aprox.</span>
+          <span>Encargos: ~15 días aprox.</span>
         </p>
       </div>
     </div>
@@ -158,6 +157,7 @@ const ribbon = computed(() => {
 .card {
   display: flex;
   flex-direction: column;
+  height: 100%;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -170,20 +170,23 @@ const ribbon = computed(() => {
   transform: translateY(-2px);
 }
 
-/* ── Franja de foto: cuadrada y compacta ────── */
+/* ── Franja de foto: altura controlada para que no se vea gigante ────── */
 .card__photo {
   position: relative;
-  aspect-ratio: 1 / 1;
+  height: 126px;
   background: var(--surface-2);
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   overflow: hidden;
-  padding: var(--space-3);
+  padding: 10px 14px;
 }
 
 .card__img {
-  width: 100%;
-  height: 100%;
+  max-width: 82%;
+  max-height: 102px;
+  width: auto;
+  height: auto;
   object-fit: contain;
   object-position: center;
   display: block;
@@ -191,8 +194,20 @@ const ribbon = computed(() => {
 }
 
 .card__img--empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   color: var(--charcoal);
-  font-size: 0.72rem;
+  font-size: 0.68rem;
+  opacity: 0.6;
+}
+
+.card__empty-icon {
+  width: 28px;
+  height: 28px;
+  opacity: 0.55;
 }
 
 /* ── Sticker de ahorro ──────────────────────────────────────── */
@@ -247,18 +262,19 @@ const ribbon = computed(() => {
   white-space: nowrap;
 }
 
-/* ── Cuerpo: compacto ─────────────────────────────────────────── */
+/* ── Cuerpo: compacto y alineado entre filas ─────────────────────────────── */
 .card__body {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  padding: var(--space-3);
+  padding: 10px 12px;
 }
 
 .card__name {
   font-family: var(--font-display);
-  font-size: 0.92rem;
+  font-size: 0.85rem;
   font-weight: 700;
-  line-height: 1.25;
+  line-height: 1.22;
   color: var(--cream);
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -268,21 +284,30 @@ const ribbon = computed(() => {
 
 .card__sub {
   margin-top: 2px;
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   color: var(--charcoal);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* ── Precio estilo anuncio ─────────────────────────────────────────────────── */
+/* ── Fila de precio + existencia ───────────────────────────────────────────── */
+.price-row {
+  margin-top: auto;
+  padding-top: 8px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 6px;
+}
+
 .price {
-  margin-top: var(--space-2);
+  min-width: 0;
 }
 
 .price__was {
   display: block;
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   color: var(--charcoal);
   text-decoration: line-through;
   margin-bottom: 1px;
@@ -298,25 +323,28 @@ const ribbon = computed(() => {
 }
 
 .price__symbol {
-  font-size: 0.88rem;
+  font-size: 0.78rem;
   margin-top: 2px;
 }
 
 .price__int {
-  font-size: 1.85rem;
+  font-size: 1.5rem;
   letter-spacing: -0.02em;
 }
 
 .price__cents {
-  font-size: 0.88rem;
+  font-size: 0.78rem;
   margin-top: 2px;
 }
 
-/* ── Mayorista: segundo precio, discreto pero legible ────────────────────── */
+/* ── Mayorista: segundo precio compacto ──────────────────────────────────── */
 .card__wholesale {
-  margin-top: 4px;
-  font-size: 0.66rem;
+  margin-top: 3px;
+  font-size: 0.62rem;
   color: var(--charcoal);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .card__wholesale b {
@@ -324,20 +352,21 @@ const ribbon = computed(() => {
   font-weight: 700;
 }
 
-/* ── Indicador de existencia ─────────────────────────────────────────────── */
+/* ── Indicador de existencia compacto ────────────────────────────────────── */
 .card__stock {
-  margin-top: 6px;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 0.68rem;
+  gap: 4px;
+  font-size: 0.64rem;
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1;
+  white-space: nowrap;
+  padding-bottom: 2px;
 }
 
 .card__stock-dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   flex-shrink: 0;
   background: currentColor;
@@ -357,21 +386,21 @@ const ribbon = computed(() => {
 
 /* ── Encargo por WhatsApp ────────────────────────────────────────────────── */
 .card__order {
-  margin-top: var(--space-2);
+  margin-top: 7px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .order-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
   width: 100%;
-  padding: 6px 10px;
+  padding: 5px 8px;
   font-family: var(--font-display);
-  font-size: 0.74rem;
+  font-size: 0.71rem;
   font-weight: 700;
   border-radius: var(--radius-sm);
   border: 1px solid rgba(37, 211, 102, 0.4);
@@ -379,7 +408,7 @@ const ribbon = computed(() => {
   color: #fff;
   cursor: pointer;
   transition: transform 0.12s ease, background-color 0.15s ease, box-shadow 0.15s ease;
-  box-shadow: 0 2px 6px rgba(37, 211, 102, 0.25);
+  box-shadow: 0 2px 6px rgba(37, 211, 102, 0.22);
 }
 
 .order-btn:hover {
@@ -393,47 +422,43 @@ const ribbon = computed(() => {
 }
 
 .order-btn__icon {
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
   flex-shrink: 0;
 }
 
 .order-info {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.6rem;
+  font-size: 0.56rem;
   color: var(--charcoal);
-  line-height: 1.2;
-}
-
-.order-info svg {
-  width: 11px;
-  height: 11px;
-  flex-shrink: 0;
-  color: var(--blue-2);
+  line-height: 1.15;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* ── Móvil: tarjeta cuadrícula compacta ─────────────────────────────────── */
 @media (max-width: 520px) {
+  .card__photo { height: 108px; padding: 8px 10px; }
+  .card__img { max-height: 88px; }
   .card__body { padding: var(--space-2); }
-  .card__name { font-size: 0.82rem; }
-  .card__sub { font-size: 0.62rem; }
-  .price__int { font-size: 1.45rem; }
-  .price__symbol, .price__cents { font-size: 0.75rem; }
-  .card__wholesale { font-size: 0.58rem; }
-  .card__foot { font-size: 0.58rem; }
+  .card__name { font-size: 0.78rem; }
+  .card__sub { font-size: 0.6rem; }
+  .price__int { font-size: 1.32rem; }
+  .price__symbol, .price__cents { font-size: 0.7rem; }
+  .card__stock { font-size: 0.58rem; }
+  .card__wholesale { font-size: 0.56rem; }
   .order-btn {
-    font-size: 0.68rem;
-    padding: 5px 8px;
+    font-size: 0.66rem;
+    padding: 4px 6px;
     gap: 4px;
   }
   .order-btn__icon {
-    width: 12px;
-    height: 12px;
+    width: 11px;
+    height: 11px;
   }
   .order-info {
-    font-size: 0.56rem;
+    font-size: 0.52rem;
   }
 }
 </style>

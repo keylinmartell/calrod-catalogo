@@ -30,7 +30,7 @@ export function getStockStatus(part: { availability?: string; stock_qty?: number
       qty: 0,
       hasStock: false,
       tone: 'out',
-      cardLabel: 'Agotado · 0 disponibles',
+      cardLabel: 'Agotado (0)',
       badgeLabel: 'Sin existencia · 0 disponibles',
     }
   }
@@ -40,7 +40,7 @@ export function getStockStatus(part: { availability?: string; stock_qty?: number
       qty: 1,
       hasStock: true,
       tone: 'warn',
-      cardLabel: '¡Última disponible! (1 u.)',
+      cardLabel: '1 disp.',
       badgeLabel: '¡Última unidad! · 1 disponible',
     }
   }
@@ -50,7 +50,7 @@ export function getStockStatus(part: { availability?: string; stock_qty?: number
       qty,
       hasStock: true,
       tone: 'warn',
-      cardLabel: `¡Quedan ${qty} disponibles!`,
+      cardLabel: `${qty} disp.`,
       badgeLabel: `Stock bajo · ${qty} disponibles`,
     }
   }
@@ -59,7 +59,7 @@ export function getStockStatus(part: { availability?: string; stock_qty?: number
     qty,
     hasStock: true,
     tone: 'ok',
-    cardLabel: `En stock · ${qty} disponibles`,
+    cardLabel: `${qty} disp.`,
     badgeLabel: `En stock · ${qty} disponibles`,
   }
 }

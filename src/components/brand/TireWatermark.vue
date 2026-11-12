@@ -82,7 +82,7 @@ if (!play.value) {
 .tire-watermark {
   position: absolute;
   inset: 0;
-  opacity: 0.14;
+  opacity: 0.22;
   pointer-events: none;
   z-index: 0;
   overflow: hidden;
@@ -119,50 +119,50 @@ if (!play.value) {
   filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.22));
 }
 
-/* Reposo = alineado para que el centro de la llanta coincida con el inicio del texto en escritorio */
+/* Reposo = rueda completa visible en la zona central del hero sin chocar con el título */
 .tire-travel {
-  --tw-size: clamp(240px, 28vw, 360px);
+  --tw-size: clamp(148px, 15vw, 205px);
   position: absolute;
-  top: -36px;
-  left: calc(max(var(--space-5), (100% - var(--container)) / 2 + var(--space-5)) - (var(--tw-size) / 2));
+  bottom: 12px;
+  left: clamp(260px, 34vw, 540px);
   width: var(--tw-size);
   height: var(--tw-size);
   /* Estado previo a la animación: fuera de pantalla e invisible, igual que el
      frame 0% de tire-travel. Así no hay "parpadeo" mientras esperamos la carga. */
-  transform: translateX(92vw);
+  transform: translateX(70vw);
   opacity: 0;
 }
 /* La animación solo corre cuando la carga global terminó (is-playing). */
 .is-playing .tire-travel {
-  animation: tire-travel 3.4s cubic-bezier(.22,.61,.28,1) forwards;
+  animation: tire-travel 3.2s cubic-bezier(.22,.61,.28,1) forwards;
 }
 
 @keyframes tire-travel {
-  0%   { transform: translateX(92vw); opacity: 0; }
+  0%   { transform: translateX(70vw); opacity: 0; }
   5%   { opacity: 1; }
   100% { transform: translateX(0);    opacity: 1; }
 }
 
-/* Rebote vertical amortiguado: cae, golpea y va perdiendo altura hasta el reposo. */
+/* Rebote vertical contenido dentro de la altura del hero para no recortar la llanta. */
 .tire-bounce {
   width: 100%;
   height: 100%;
   transform-origin: 50% 100%;
 }
 .is-playing .tire-bounce {
-  animation: tire-bounce 3.4s linear forwards;
+  animation: tire-bounce 3.2s linear forwards;
 }
 
 @keyframes tire-bounce {
-  0%   { transform: translateY(-140px) scale(1, 1.05); }
-  18%  { transform: translateY(0)      scale(1.08, 0.9); }  /* 1er impacto */
-  30%  { transform: translateY(-70px)  scale(1, 1.03); }
-  45%  { transform: translateY(0)      scale(1.06, 0.92); } /* 2do impacto */
-  56%  { transform: translateY(-34px)  scale(1, 1.02); }
-  70%  { transform: translateY(0)      scale(1.05, 0.94); } /* 3er impacto */
-  80%  { transform: translateY(-12px)  scale(1, 1.01); }
-  90%  { transform: translateY(0)      scale(1.03, 0.97); }
-  100% { transform: translateY(0)      scale(1, 1); }       /* reposo */
+  0%   { transform: translateY(-56px) scale(1, 1.04); }
+  18%  { transform: translateY(0)     scale(1.06, 0.92); } /* 1er impacto */
+  32%  { transform: translateY(-32px) scale(1, 1.02); }
+  46%  { transform: translateY(0)     scale(1.05, 0.94); } /* 2do impacto */
+  58%  { transform: translateY(-16px) scale(1, 1.01); }
+  72%  { transform: translateY(0)     scale(1.03, 0.96); } /* 3er impacto */
+  82%  { transform: translateY(-6px)  scale(1, 1); }
+  92%  { transform: translateY(0)     scale(1.01, 0.99); }
+  100% { transform: translateY(0)     scale(1, 1); }       /* reposo */
 }
 
 /* Giro antihorario (rueda hacia la izquierda) que desacelera y se detiene. */
@@ -170,10 +170,10 @@ if (!play.value) {
   width: 100%;
   height: 100%;
   transform-origin: 50% 50%;
-  filter: drop-shadow(0 6px 10px rgba(0,0,0,0.4));
+  filter: drop-shadow(0 6px 12px rgba(0,0,0,0.45));
 }
 .is-playing .tire-rotate {
-  animation: tire-rotate 3.4s cubic-bezier(.22,.61,.28,1) forwards;
+  animation: tire-rotate 3.2s cubic-bezier(.22,.61,.28,1) forwards;
 }
 
 @keyframes tire-rotate {
@@ -188,22 +188,19 @@ if (!play.value) {
   .tire-rotate {
     animation: none;
   }
-  /* Anula el estado "fuera de pantalla" (frame 0%) para que se vea en reposo. */
   .tire-travel {
     transform: none;
     opacity: 1;
   }
 }
 
-/* Móvil: la llanta SÍ se muestra (más pequeña y arrinconada), a diferencia del
-   engrane que se ocultaba. Se reduce el tamaño y se recoloca para no tapar la
-   copia del hero. */
+/* Móvil y tablet: llanta completa visible en el extremo derecho/inferior del hero sin recortes */
 @media (max-width: 960px) {
   .tire-travel {
-    top: -20px;
-    left: -22vw;
-    width: clamp(200px, 52vw, 300px);
-    height: clamp(200px, 52vw, 300px);
+    --tw-size: clamp(110px, 26vw, 150px);
+    bottom: 8px;
+    left: auto;
+    right: 12px;
   }
 }
 </style>

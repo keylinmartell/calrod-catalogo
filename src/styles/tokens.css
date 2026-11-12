@@ -65,8 +65,8 @@
   --space-7: 48px;
   --space-8: 64px;
 
-  /* Layout */
-  --container: 1200px;
+  /* Layout: ancho completo adaptable a cualquier pantalla */
+  --container: 100%;
   --header-h: 68px;
 }
 

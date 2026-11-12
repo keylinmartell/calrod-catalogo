@@ -325,8 +325,8 @@ watch(
 /* Dos columnas arriba (fotos | compra) y el bloque técnico cruzando ambas. */
 .sheet {
   display: grid;
-  grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
-  column-gap: var(--space-7);
+  grid-template-columns: minmax(280px, 520px) minmax(0, 1fr);
+  column-gap: clamp(24px, 3vw, 48px);
   row-gap: var(--space-8);
   align-items: start;
 }
@@ -647,6 +647,18 @@ watch(
     border-left: none;
     padding-top: var(--space-6);
     border-top: 1px solid var(--border);
+  }
+}
+
+@media (max-width: 600px) {
+  .detail {
+    padding-block: var(--space-3) var(--space-6);
+  }
+  .breadcrumb {
+    margin-bottom: var(--space-4);
+  }
+  .order-cta-btn {
+    max-width: 100%;
   }
 }
 </style>
