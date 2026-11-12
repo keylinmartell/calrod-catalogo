@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useFilters } from '@/composables/useFilters'
-import CategoryIcon from '@/components/catalog/CategoryIcon.vue'
 import SearchBar from '@/components/catalog/SearchBar.vue'
 
 const { categories, activeCategories, toggleCategory } = useFilters()
@@ -64,7 +63,7 @@ onBeforeUnmount(() => {
   <nav
     v-if="categories.length"
     class="catbar"
-    aria-label="Categorías / sistemas"
+    aria-label="Categorías del catálogo"
     @mouseenter="isHovered = true"
     @mouseleave="isHovered = false"
   >
@@ -84,35 +83,37 @@ onBeforeUnmount(() => {
           class="catbar__track"
           :class="{ 'is-paused': isHovered || isInteracting }"
         >
-          <!-- Grupo principal de categorías -->
+          <!-- Grupo 1: solo nombres con tipografía display moderna -->
           <div class="catbar__group">
-            <button
-              v-for="cat in categories"
-              :key="`g1-${cat.id}`"
-              class="catbar__item"
-              :class="{ 'catbar__item--active': activeCategories.includes(cat.id) }"
-              :aria-pressed="activeCategories.includes(cat.id)"
-              @click="toggleCategory(cat.id)"
-            >
-              <CategoryIcon :slug="cat.slug" :size="20" class="catbar__icon" />
-              <span class="catbar__label">{{ cat.name }}</span>
-            </button>
+            <template v-for="cat in categories" :key="`g1-${cat.id}`">
+              <button
+                type="button"
+                class="catbar__item"
+                :class="{ 'catbar__item--active': activeCategories.includes(cat.id) }"
+                :aria-pressed="activeCategories.includes(cat.id)"
+                @click="toggleCategory(cat.id)"
+              >
+                <span class="catbar__label">{{ cat.name }}</span>
+              </button>
+              <span class="catbar__slash" aria-hidden="true">/</span>
+            </template>
           </div>
 
-          <!-- Grupo duplicado idéntico para ticker continuo infinito -->
+          <!-- Grupo 2: duplicado idéntico para loop continuo -->
           <div class="catbar__group" aria-hidden="true">
-            <button
-              v-for="cat in categories"
-              :key="`g2-${cat.id}`"
-              class="catbar__item"
-              :class="{ 'catbar__item--active': activeCategories.includes(cat.id) }"
-              :aria-pressed="activeCategories.includes(cat.id)"
-              tabindex="-1"
-              @click="toggleCategory(cat.id)"
-            >
-              <CategoryIcon :slug="cat.slug" :size="20" class="catbar__icon" />
-              <span class="catbar__label">{{ cat.name }}</span>
-            </button>
+            <template v-for="cat in categories" :key="`g2-${cat.id}`">
+              <button
+                type="button"
+                class="catbar__item"
+                :class="{ 'catbar__item--active': activeCategories.includes(cat.id) }"
+                :aria-pressed="activeCategories.includes(cat.id)"
+                tabindex="-1"
+                @click="toggleCategory(cat.id)"
+              >
+                <span class="catbar__label">{{ cat.name }}</span>
+              </button>
+              <span class="catbar__slash" aria-hidden="true">/</span>
+            </template>
           </div>
         </div>
       </div>
@@ -121,13 +122,54 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* ── Barra con Borde Luminoso Moderno (Dual Hairline Specular) ───────────── */
 .catbar {
-  background: var(--surface-glass);
-  backdrop-filter: blur(14px);
-  border-bottom: 1px solid var(--border);
   position: sticky;
   top: var(--header-h);
   z-index: 15;
+  background: rgba(9, 11, 16, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.6);
+}
+
+/* Línea de luz láser sutil en el borde inferior del ticker */
+.catbar::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(74, 123, 184, 0.2) 20%,
+    rgba(96, 165, 250, 0.65) 50%,
+    rgba(74, 123, 184, 0.2) 80%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+:root[data-theme='light'] .catbar {
+  background: rgba(255, 255, 255, 0.9);
+  border-top-color: rgba(15, 23, 42, 0.05);
+  border-bottom-color: rgba(15, 23, 42, 0.08);
+  box-shadow: 0 6px 20px -8px rgba(15, 23, 42, 0.07);
+}
+
+:root[data-theme='light'] .catbar::after {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(26, 61, 110, 0.15) 20%,
+    rgba(37, 99, 235, 0.45) 50%,
+    rgba(26, 61, 110, 0.15) 80%,
+    transparent 100%
+  );
 }
 
 /* El buscador dentro de la barra solo aparece en móvil/tablet. */
@@ -139,24 +181,23 @@ onBeforeUnmount(() => {
   display: flex;
   overflow-x: auto;
   overflow-y: hidden;
-  padding-block: var(--space-3);
+  padding-block: 11px;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-x: contain;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  /* Fade elegante en los bordes para una transición suave del ticker */
   -webkit-mask-image: linear-gradient(
     to right,
     transparent 0,
-    #000 32px,
-    #000 calc(100% - 32px),
+    #000 56px,
+    #000 calc(100% - 56px),
     transparent 100%
   );
   mask-image: linear-gradient(
     to right,
     transparent 0,
-    #000 32px,
-    #000 calc(100% - 32px),
+    #000 56px,
+    #000 calc(100% - 56px),
     transparent 100%
   );
 }
@@ -165,12 +206,12 @@ onBeforeUnmount(() => {
   display: none;
 }
 
-/* Ticker continuo */
+/* ── Track & Animación ───────────────────────────────────────────────────── */
 .catbar__track {
   display: flex;
   width: max-content;
   will-change: transform;
-  animation: cat-ticker 44s linear infinite;
+  animation: cat-ticker 42s linear infinite;
 }
 
 .catbar__track:hover,
@@ -182,8 +223,8 @@ onBeforeUnmount(() => {
 .catbar__group {
   display: flex;
   align-items: center;
-  gap: var(--space-5);
-  padding-right: var(--space-5);
+  gap: 22px;
+  padding-right: 22px;
   flex-shrink: 0;
 }
 
@@ -196,74 +237,73 @@ onBeforeUnmount(() => {
   }
 }
 
-/* Diseño limpio, abierto y moderno — sin cajas/cápsulas pesadas */
+/* Divisor oblicuo técnico minimalista */
+.catbar__slash {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: rgba(148, 163, 184, 0.22);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+:root[data-theme='light'] .catbar__slash {
+  color: rgba(15, 23, 42, 0.2);
+}
+
+/* ── Tipografía Pura Pro (Sora Display) ──────────────────────────────────── */
 .catbar__item {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  flex-shrink: 0;
-  padding: 8px 14px;
+  padding: 4px 2px;
   background: transparent;
   border: none;
-  border-radius: var(--radius-sm);
-  color: var(--silver);
-  font-size: 0.95rem;
-  font-weight: 500;
-  letter-spacing: 0.01em;
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: var(--chrome);
   white-space: nowrap;
   cursor: pointer;
-  transition: color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+  transition: color 0.2s ease, transform 0.2s ease, text-shadow 0.2s ease;
 }
 
-/* Línea indicadora luminosa inferior */
+/* Indicador láser inferior en el ítem activo/hover */
 .catbar__item::after {
   content: '';
   position: absolute;
-  bottom: 0;
-  left: 12px;
-  right: 12px;
+  left: 0;
+  right: 0;
+  bottom: -2px;
   height: 2px;
-  background: var(--blue-2);
   border-radius: 2px;
+  background: linear-gradient(90deg, transparent, #60a5fa, transparent);
   transform: scaleX(0);
   opacity: 0;
-  box-shadow: 0 0 8px var(--blue-2);
-  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
-}
-
-.catbar__icon {
-  color: var(--chrome);
-  transition: color 0.2s ease, transform 0.2s ease;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
 }
 
 .catbar__item:hover {
   color: #ffffff;
-  background: rgba(236, 238, 242, 0.05);
-  transform: translateY(-1px);
-}
-
-.catbar__item:hover .catbar__icon {
-  color: var(--blue-2);
-  transform: scale(1.12);
+  text-shadow: 0 0 18px rgba(96, 165, 250, 0.45);
 }
 
 .catbar__item:hover::after {
-  transform: scaleX(0.5);
-  opacity: 0.5;
+  transform: scaleX(0.6);
+  opacity: 0.65;
 }
 
 .catbar__item--active {
-  color: #ffffff;
-  font-weight: 600;
-  background: rgba(74, 123, 184, 0.12);
-}
-
-.catbar__item--active .catbar__icon {
-  color: var(--blue-2);
+  color: #60a5fa;
+  font-weight: 700;
+  text-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
 }
 
 .catbar__item--active::after {
+  background: #3b82f6;
+  box-shadow: 0 0 10px #3b82f6;
   transform: scaleX(1);
   opacity: 1;
 }
@@ -274,20 +314,16 @@ onBeforeUnmount(() => {
 }
 
 :root[data-theme='light'] .catbar__item:hover {
-  color: var(--cream);
-  background: rgba(0, 0, 0, 0.04);
+  color: var(--blue);
+  text-shadow: none;
 }
 
 :root[data-theme='light'] .catbar__item--active {
   color: var(--blue);
-  background: rgba(26, 61, 110, 0.07);
+  text-shadow: none;
 }
 
-:root[data-theme='light'] .catbar__item--active .catbar__icon {
-  color: var(--blue);
-}
-
-:root[data-theme='light'] .catbar__item::after {
+:root[data-theme='light'] .catbar__item--active::after {
   background: var(--blue);
   box-shadow: none;
 }
@@ -304,26 +340,19 @@ onBeforeUnmount(() => {
     padding-top: var(--space-3);
   }
   .catbar__inner {
-    padding-top: var(--space-2);
-    padding-bottom: var(--space-2);
+    padding-block: 9px;
   }
 }
 
 @media (max-width: 520px) {
   .catbar__group {
-    gap: var(--space-3);
-    padding-right: var(--space-3);
+    gap: 16px;
+    padding-right: 16px;
   }
 
   .catbar__item {
-    gap: 6px;
-    padding: 6px 10px;
-    font-size: 0.82rem;
-  }
-
-  .catbar__icon {
-    width: 16px;
-    height: 16px;
+    font-size: 0.72rem;
+    letter-spacing: 0.07em;
   }
 }
 </style>

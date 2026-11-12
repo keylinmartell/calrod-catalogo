@@ -76,25 +76,32 @@ onBeforeUnmount(() => {
 <template>
   <!-- Hero -->
   <section class="hero">
+    <div class="hero__ambient" aria-hidden="true"></div>
     <TireWatermark />
+
     <div class="container hero__inner">
-      <!-- Columna izquierda: Título y acciones -->
+      <!-- Columna 1: Propuesta de Valor & Acciones -->
       <div class="hero__copy">
-        <div class="hero__badge mono">
-          <span class="hero__badge-dot" aria-hidden="true"></span>
-          <span>CATÁLOGO OFICIAL · STOCK Y ENCARGOS</span>
+        <div class="hero__eyebrow">
+          <span class="hero__eyebrow-badge mono">
+            <span class="hero__badge-dot" aria-hidden="true"></span>
+            <span>CATÁLOGO OFICIAL</span>
+          </span>
+          <span class="hero__eyebrow-divider" aria-hidden="true"></span>
+          <span class="hero__eyebrow-sub mono">STOCK EN TIEMPO REAL &amp; ENCARGOS</span>
         </div>
 
         <h1 class="hero__title">
           Encuentre la pieza exacta para su auto,
           <span class="hero__title-grad">sin adivinar.</span>
         </h1>
+
         <p class="hero__lead">
           Cada repuesto muestra compatibilidad real garantizada, existencias actualizadas y opción de encargo directo.
         </p>
 
         <div class="hero__actions">
-          <button type="button" class="btn btn--primary hero__cta" @click="scrollToCatalog">
+          <button type="button" class="btn btn--primary hero__cta hero__cta--primary" @click="scrollToCatalog">
             <svg
               class="hero__cta-icon"
               viewBox="0 0 24 24"
@@ -105,12 +112,15 @@ onBeforeUnmount(() => {
               stroke-linejoin="round"
               aria-hidden="true"
             >
-              <rect x="3" y="4" width="7" height="7" rx="1" />
-              <rect x="14" y="4" width="7" height="7" rx="1" />
-              <rect x="3" y="15" width="7" height="5" rx="1" />
-              <rect x="14" y="15" width="7" height="5" rx="1" />
+              <rect x="3" y="4" width="7" height="7" rx="1.5" />
+              <rect x="14" y="4" width="7" height="7" rx="1.5" />
+              <rect x="3" y="15" width="7" height="5" rx="1.5" />
+              <rect x="14" y="15" width="7" height="5" rx="1.5" />
             </svg>
-            Explorar catálogo
+            <span>Explorar catálogo</span>
+            <svg class="hero__cta-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 5v14M19 12l-7 7-7-7" />
+            </svg>
           </button>
 
           <button
@@ -132,7 +142,7 @@ onBeforeUnmount(() => {
               <path d="M12 21s-6-5.3-6-10a6 6 0 0 1 12 0c0 4.7-6 10-6 10Z" />
               <circle cx="12" cy="11" r="2.2" />
             </svg>
-            Ubicación tienda
+            <span>Ubicación tienda</span>
           </button>
 
           <button
@@ -145,54 +155,54 @@ onBeforeUnmount(() => {
                 d="M16.004 3.2c-7.06 0-12.8 5.74-12.8 12.8 0 2.258.594 4.462 1.72 6.4L3.2 28.8l6.56-1.72a12.74 12.74 0 0 0 6.244 1.62h.006c7.06 0 12.8-5.74 12.8-12.8 0-3.42-1.332-6.634-3.75-9.052A12.72 12.72 0 0 0 16.004 3.2Zm0 23.36h-.004a10.56 10.56 0 0 1-5.384-1.474l-.386-.23-3.894 1.02 1.04-3.796-.252-.39a10.55 10.55 0 0 1-1.616-5.62c0-5.868 4.776-10.64 10.648-10.64a10.57 10.57 0 0 1 7.524 3.12 10.56 10.56 0 0 1 3.116 7.526c0 5.868-4.776 10.64-10.642 10.64Zm5.834-7.964c-.32-.16-1.892-.934-2.184-1.04-.293-.107-.507-.16-.72.16-.213.32-.826 1.04-1.013 1.253-.187.213-.373.24-.693.08-.32-.16-1.35-.498-2.57-1.586-.95-.847-1.592-1.894-1.778-2.214-.187-.32-.02-.493.14-.652.144-.143.32-.373.48-.56.16-.187.213-.32.32-.533.107-.213.053-.4-.027-.56-.08-.16-.72-1.734-.986-2.374-.26-.624-.523-.54-.72-.55l-.613-.01c-.213 0-.56.08-.853.4-.293.32-1.12 1.094-1.12 2.667 0 1.574 1.146 3.094 1.306 3.307.16.213 2.253 3.44 5.46 4.826.763.33 1.358.527 1.822.674.766.244 1.463.21 2.014.127.615-.092 1.892-.774 2.158-1.52.267-.747.267-1.387.187-1.52-.08-.134-.293-.214-.613-.374Z"
               />
             </svg>
-            Encargar repuesto
+            <span>Encargar repuesto</span>
           </button>
         </div>
       </div>
 
-      <!-- Zona central: Ventajas clave que aprovechan el espacio en pantallas grandes y medianas -->
-      <div class="hero__features" aria-label="Ventajas de Repuestos CalRod">
-        <div class="hero-feat">
-          <div class="hero-feat__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              <polyline points="9 12 11 14 15 10" />
-            </svg>
+      <!-- Columna 2: Editorial Timeline de Garantías (Sin cajas/cards, solo escritorio y tablet grande) -->
+      <div class="hero__pillars" aria-label="Garantías de Repuestos CalRod">
+        <div class="pillar">
+          <div class="pillar__marker" aria-hidden="true">
+            <span class="pillar__num mono">01</span>
           </div>
-          <div class="hero-feat__body">
-            <strong class="hero-feat__title">Compatibilidad Exacta</strong>
-            <span class="hero-feat__desc">Filtrado real por marca, modelo, motor y año.</span>
-          </div>
-        </div>
-
-        <div class="hero-feat">
-          <div class="hero-feat__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
-              <line x1="7" y1="7" x2="7.01" y2="7" />
-            </svg>
-          </div>
-          <div class="hero-feat__body">
-            <strong class="hero-feat__title">Precios Mayoristas</strong>
-            <span class="hero-feat__desc">Descuento directo por volumen desde 5 unidades.</span>
+          <div class="pillar__content">
+            <div class="pillar__head">
+              <strong class="pillar__title">Compatibilidad Exacta</strong>
+              <span class="pillar__meta mono">FIT 100%</span>
+            </div>
+            <p class="pillar__desc">Filtrado real por marca, modelo, motor y año.</p>
           </div>
         </div>
 
-        <div class="hero-feat">
-          <div class="hero-feat__icon hero-feat__icon--green" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10" />
-              <polyline points="12 6 12 12 16 14" />
-            </svg>
+        <div class="pillar">
+          <div class="pillar__marker" aria-hidden="true">
+            <span class="pillar__num mono">02</span>
           </div>
-          <div class="hero-feat__body">
-            <strong class="hero-feat__title">Encargos en ~15 Días</strong>
-            <span class="hero-feat__desc">¿Agotado o necesitas más? Lo traemos por WhatsApp.</span>
+          <div class="pillar__content">
+            <div class="pillar__head">
+              <strong class="pillar__title">Precios Mayoristas</strong>
+              <span class="pillar__meta mono">5+ UDS</span>
+            </div>
+            <p class="pillar__desc">Descuento directo por volumen desde 5 unidades.</p>
+          </div>
+        </div>
+
+        <div class="pillar">
+          <div class="pillar__marker" aria-hidden="true">
+            <span class="pillar__num mono">03</span>
+          </div>
+          <div class="pillar__content">
+            <div class="pillar__head">
+              <strong class="pillar__title">Encargos en ~15 Días</strong>
+              <span class="pillar__meta pillar__meta--green mono">WHATSAPP</span>
+            </div>
+            <p class="pillar__desc">¿Agotado o necesitas más? Lo traemos bajo pedido.</p>
           </div>
         </div>
       </div>
 
-      <!-- Columna derecha: Mapa de tienda física -->
+      <!-- Columna 3: Mapa Interactivo de Tienda Física -->
       <MapPanel
         v-if="storeSettings"
         class="hero__map"
@@ -333,86 +343,171 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+/* ── Hero Section ────────────────────────────────────────────────────────── */
 .hero {
   position: relative;
   overflow: hidden;
-  min-height: 256px;
+  min-height: 268px;
   display: flex;
   align-items: center;
-  padding-block: var(--space-5);
+  padding-block: clamp(20px, 2.5vw, 32px);
   border-bottom: 1px solid var(--border);
   background:
-    radial-gradient(ellipse 680px 320px at 18% 50%, rgba(26, 61, 110, 0.14), transparent 70%),
-    radial-gradient(ellipse 520px 260px at 52% 50%, rgba(74, 123, 184, 0.08), transparent 70%);
+    radial-gradient(ellipse 750px 360px at 14% 45%, rgba(37, 99, 235, 0.14), transparent 70%),
+    radial-gradient(ellipse 620px 320px at 84% 55%, rgba(30, 64, 175, 0.1), transparent 70%);
+}
+
+/* Textura arquitectónica de precisión en el fondo del Hero */
+.hero__ambient {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.28;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: radial-gradient(ellipse 85% 90% at 50% 50%, #000 30%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 85% 90% at 50% 50%, #000 30%, transparent 100%);
+}
+
+:root[data-theme='light'] .hero__ambient {
+  background-image:
+    linear-gradient(to right, rgba(15, 23, 42, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(15, 23, 42, 0.04) 1px, transparent 1px);
 }
 
 .hero__inner {
   display: grid;
-  grid-template-columns: minmax(280px, 1.1fr) minmax(260px, 0.95fr) minmax(320px, 460px);
-  gap: clamp(16px, 2.2vw, 32px);
+  grid-template-columns: minmax(380px, 1.35fr) minmax(240px, 0.85fr) minmax(350px, 430px);
+  gap: clamp(20px, 2.4vw, 36px);
   align-items: center;
   position: relative;
   z-index: 1;
 }
 
-.hero__badge {
+/* Eyebrow compuesto estilo consola OEM */
+.hero__eyebrow {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 10px;
+  padding: 4px 12px 4px 5px;
   border-radius: 999px;
-  background: rgba(26, 61, 110, 0.22);
-  border: 1px solid rgba(74, 123, 184, 0.3);
-  color: var(--blue-2);
-  font-size: 0.68rem;
+  background: rgba(15, 23, 42, 0.65);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(8px);
+  margin-bottom: 12px;
+}
+
+:root[data-theme='light'] .hero__eyebrow {
+  background: rgba(255, 255, 255, 0.85);
+  border-color: rgba(26, 61, 110, 0.18);
+}
+
+.hero__eyebrow-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.28), rgba(29, 78, 216, 0.16));
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  color: #93c5fd;
+  font-size: 0.63rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  margin-bottom: var(--space-2);
+  letter-spacing: 0.07em;
+}
+
+:root[data-theme='light'] .hero__eyebrow-badge {
+  background: rgba(26, 61, 110, 0.1);
+  border-color: rgba(26, 61, 110, 0.25);
+  color: var(--blue);
 }
 
 .hero__badge-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #25d366;
-  box-shadow: 0 0 8px rgba(37, 211, 102, 0.8);
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
+}
+
+.hero__eyebrow-divider {
+  width: 1px;
+  height: 11px;
+  background: rgba(148, 163, 184, 0.24);
+}
+
+.hero__eyebrow-sub {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  color: var(--silver);
 }
 
 .hero__title {
-  font-size: clamp(1.35rem, 2.2vw, 2.05rem);
+  font-size: clamp(1.5rem, 2.35vw, 2.2rem);
   font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1.15;
-  max-width: 24ch;
+  letter-spacing: -0.028em;
+  line-height: 1.12;
+  max-width: 23ch;
+  color: var(--cream);
 }
 
 .hero__title-grad {
-  background: linear-gradient(100deg, var(--cream) 25%, var(--blue-2) 95%);
+  background: linear-gradient(105deg, #ffffff 10%, #93c5fd 52%, #3b82f6 95%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+:root[data-theme='light'] .hero__title-grad {
+  background: linear-gradient(105deg, #1a3d6e 10%, #2563eb 90%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
 .hero__lead {
-  color: var(--charcoal);
-  font-size: 0.88rem;
-  max-width: 46ch;
-  margin-block: var(--space-2) var(--space-3);
-  line-height: 1.45;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  max-width: 48ch;
+  margin-block: 10px 18px;
+  line-height: 1.5;
 }
 
 .hero__actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: var(--space-2);
+  gap: 10px;
 }
 
-/* Botón CTA del hero: mismo botón, icono + texto centrados. */
 .hero__cta {
   gap: 8px;
-  padding: 9px 16px;
+  padding: 10px 16px;
   font-size: 0.84rem;
+  border-radius: 11px;
+  white-space: nowrap;
+}
+
+.hero__cta--primary {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  border: 1px solid rgba(147, 197, 253, 0.32);
+  color: #ffffff;
+  box-shadow:
+    0 8px 22px -6px rgba(37, 99, 235, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.hero__cta--primary:hover {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  transform: translateY(-1px);
+  box-shadow:
+    0 12px 26px -6px rgba(59, 130, 246, 0.68),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32);
 }
 
 .hero__cta-icon {
@@ -421,74 +516,130 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
 }
 
-/* Ventajas centrales del hero */
-.hero__features {
+.hero__cta-arrow {
+  width: 14px;
+  height: 14px;
+  opacity: 0.8;
+  transition: transform 0.2s ease;
+}
+
+.hero__cta--primary:hover .hero__cta-arrow {
+  transform: translateY(2px);
+}
+
+/* ── Columna Central: Editorial Architectural Ledger (Cero Cards/Cajas) ─── */
+.hero__pillars {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  padding-left: 22px;
+  /* Línea vertical continua estilo editorial de alta precisión */
+  border-left: 1px solid rgba(148, 163, 184, 0.14);
 }
 
-.hero-feat {
+.hero__pillars::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(59, 130, 246, 0.65) 25%,
+    rgba(59, 130, 246, 0.65) 75%,
+    transparent 100%
+  );
+}
+
+.pillar {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  border-radius: var(--radius-sm);
-  background: rgba(17, 19, 24, 0.72);
-  backdrop-filter: blur(8px);
-  border: 1px solid var(--border);
-  transition: border-color 0.15s ease, transform 0.15s ease;
+  align-items: flex-start;
+  gap: 14px;
+  padding-block: 11px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: transform 0.2s ease;
 }
 
-:root[data-theme='light'] .hero-feat {
-  background: rgba(255, 255, 255, 0.82);
+:root[data-theme='light'] .pillar {
+  border-bottom-color: rgba(15, 23, 42, 0.07);
 }
 
-.hero-feat:hover {
-  border-color: rgba(74, 123, 184, 0.35);
-  transform: translateX(2px);
+.pillar:first-child {
+  padding-top: 2px;
 }
 
-.hero-feat__icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  display: grid;
-  place-items: center;
-  background: rgba(26, 61, 110, 0.25);
-  color: var(--blue-2);
+.pillar:last-child {
+  padding-bottom: 2px;
+  border-bottom: none;
+}
+
+.pillar:hover {
+  transform: translateX(3px);
+}
+
+.pillar__marker {
+  padding-top: 2px;
   flex-shrink: 0;
 }
 
-.hero-feat__icon--green {
-  background: rgba(37, 211, 102, 0.14);
-  color: #25d366;
+.pillar__num {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--blue-2);
+  opacity: 0.85;
 }
 
-.hero-feat__icon svg {
-  width: 16px;
-  height: 16px;
-}
-
-.hero-feat__body {
+.pillar__content {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
   min-width: 0;
+  flex: 1;
 }
 
-.hero-feat__title {
+.pillar__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pillar__title {
   font-family: var(--font-display);
-  font-size: 0.78rem;
+  font-size: 0.84rem;
   font-weight: 700;
   color: var(--cream);
+  letter-spacing: -0.01em;
   line-height: 1.2;
 }
 
-.hero-feat__desc {
-  font-size: 0.7rem;
+.pillar__meta {
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #60a5fa;
+  opacity: 0.9;
+}
+
+.pillar__meta--green {
+  color: #4ade80;
+}
+
+:root[data-theme='light'] .pillar__meta {
+  color: #1d4ed8;
+}
+
+:root[data-theme='light'] .pillar__meta--green {
+  color: #15803d;
+}
+
+.pillar__desc {
+  font-size: 0.75rem;
   color: var(--charcoal);
-  line-height: 1.25;
+  line-height: 1.35;
 }
 
 .btn {
@@ -499,13 +650,11 @@ onBeforeUnmount(() => {
   border-radius: var(--radius);
   font-weight: 600;
   font-size: 0.95rem;
-  transition: all 0.15s ease;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .btn--primary {
   background: var(--blue);
-  /* El botón es azul oscuro en ambos temas → texto siempre claro (no --cream,
-     que en modo claro se vuelve oscuro y no contrastaría). */
   color: #eceef2;
 }
 
@@ -514,14 +663,24 @@ onBeforeUnmount(() => {
 }
 
 .btn--wa {
-  background: rgba(37, 211, 102, 0.14);
-  border: 1px solid rgba(37, 211, 102, 0.4);
-  color: #25d366;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.38);
+  color: #4ade80;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+:root[data-theme='light'] .btn--wa {
+  background: rgba(22, 163, 74, 0.1);
+  border-color: rgba(22, 163, 74, 0.35);
+  color: #15803d;
 }
 
 .btn--wa:hover {
-  background: #25d366;
+  background: #22c55e;
+  border-color: #22c55e;
   color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px -6px rgba(34, 197, 94, 0.5);
 }
 
 .btn--ghost {
@@ -610,19 +769,14 @@ onBeforeUnmount(() => {
 }
 
 /* Pantallas medianas (laptops compactas / tablets horizontales):
-   Título + Mapa arriba en 2 columnas, las 3 tarjetas de ventajas en fila abajo */
+   Se oculta la columna intermedia para mantener limpieza entre título y mapa */
 @media (max-width: 1180px) {
   .hero__inner {
-    grid-template-columns: 1fr minmax(300px, 420px);
-    row-gap: var(--space-4);
+    grid-template-columns: 1fr minmax(320px, 430px);
   }
 
-  .hero__features {
-    grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: var(--space-2);
-    order: 3;
+  .hero__pillars {
+    display: none;
   }
 }
 
@@ -640,15 +794,15 @@ onBeforeUnmount(() => {
   }
 }
 
-/* Pantallas chicas (tablets verticales y móviles) */
+/* Pantallas chicas (tablets verticales y móviles): sin ítems extra ni mapa inline */
 @media (max-width: 860px) {
   .hero__inner {
     grid-template-columns: 1fr;
     gap: var(--space-3);
   }
 
-  /* En móvil el mapa no va inline: se ve dentro del dialog. */
-  .hero__map {
+  .hero__map,
+  .hero__pillars {
     display: none;
   }
 
@@ -657,45 +811,36 @@ onBeforeUnmount(() => {
     padding-block: var(--space-4);
   }
 
-  .hero__features {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
-  }
-
   .catalog {
     padding-block: var(--space-3) var(--space-5);
   }
 }
 
-@media (max-width: 640px) {
-  .hero__badge {
-    font-size: 0.62rem;
-    padding: 3px 8px;
-  }
+  @media (max-width: 640px) {
+    .hero__eyebrow-sub,
+    .hero__eyebrow-divider {
+      display: none;
+    }
 
-  .hero__lead {
-    font-size: 0.82rem;
-  }
+    .hero__eyebrow {
+      padding: 3px;
+    }
 
-  .hero__actions {
-    width: 100%;
-  }
+    .hero__lead {
+      font-size: 0.82rem;
+    }
 
-  .hero__cta {
-    flex: 1 1 auto;
-    padding: 8px 12px;
-    font-size: 0.78rem;
-  }
+    .hero__actions {
+      width: 100%;
+      flex-wrap: wrap;
+    }
 
-  .hero__features {
-    grid-template-columns: 1fr;
-    gap: 6px;
+    .hero__cta {
+      flex: 1 1 auto;
+      padding: 9px 12px;
+      font-size: 0.79rem;
+    }
   }
-
-  .hero-feat {
-    padding: 7px 10px;
-  }
-}
 
 /* ── Mobile Filter Drawer ────────────────────────────────────────────────── */
 .mobile-filter-drawer {
@@ -778,7 +923,6 @@ onBeforeUnmount(() => {
   position: relative;
   width: 100%;
   max-width: 460px;
-  /* Deja aire arriba para que la ✕ no se monte sobre el panel. */
   margin-top: 52px;
 }
 

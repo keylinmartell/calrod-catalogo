@@ -1,24 +1,13 @@
 <script setup lang="ts">
 /**
  * TireWatermark — llanta que entra rodando de DERECHA a IZQUIERDA, rebota y se
- * detiene FIJA en el mismo lugar donde vivía el engrane (WrenchWatermark):
- * arriba-izquierda del hero. Sustituye por completo a esa marca de agua.
- *
- * Es una animación de ENTRADA (corre una sola vez, `forwards`): no hace loop ni
- * desaparece. Los colores de los degradados salen de variables CSS para poder
- * retunearlos en modo claro (ver bloque html[data-theme='light']).
- *
- * IMPORTANTE: la animación NO arranca hasta que el overlay de carga global
- * (useAppLoading) desaparece. Así la rueda "entra rodando" cuando el usuario ya
- * está viendo el hero, no escondida detrás del "Cargando la página…".
+ * queda girando continuamente en su posición final.
  */
 import { ref, watch } from 'vue'
 import { useAppLoading } from '@/composables/useAppLoading'
 
 const { booting } = useAppLoading()
 
-// `play` activa las clases de animación. Si ya se terminó de cargar cuando este
-// componente se monta, arranca de una vez; si no, espera a que booting → false.
 const play = ref(!booting.value)
 if (!play.value) {
   const stop = watch(booting, (b) => {
@@ -82,7 +71,7 @@ if (!play.value) {
 .tire-watermark {
   position: absolute;
   inset: 0;
-  opacity: 0.22;
+  opacity: 0.24;
   pointer-events: none;
   z-index: 0;
   overflow: hidden;
@@ -95,7 +84,7 @@ if (!play.value) {
   --tw-tread: #050506;
 }
 
-/* Modo claro: llanta mucho más oscura, con tonos negro profundo y grafito de alto impacto */
+/* Modo claro: llanta más oscura, con tonos negro profundo y grafito de alto impacto */
 :root[data-theme='light'] .tire-watermark {
   opacity: 0.85;
   --tw-r0: #2d323b;
@@ -119,20 +108,18 @@ if (!play.value) {
   filter: drop-shadow(0 10px 22px rgba(0, 0, 0, 0.22));
 }
 
-/* Reposo = rueda completa visible en la zona central del hero sin chocar con el título */
+/* Posición de la llanta en el hueco libre entre los botones de acción y la línea central */
 .tire-travel {
-  --tw-size: clamp(148px, 15vw, 205px);
+  --tw-size: clamp(140px, 13.5vw, 188px);
   position: absolute;
-  bottom: 12px;
-  left: clamp(260px, 34vw, 540px);
+  bottom: 10px;
+  left: clamp(245px, 23vw, 390px);
   width: var(--tw-size);
   height: var(--tw-size);
-  /* Estado previo a la animación: fuera de pantalla e invisible, igual que el
-     frame 0% de tire-travel. Así no hay "parpadeo" mientras esperamos la carga. */
   transform: translateX(70vw);
   opacity: 0;
 }
-/* La animación solo corre cuando la carga global terminó (is-playing). */
+
 .is-playing .tire-travel {
   animation: tire-travel 3.2s cubic-bezier(.22,.61,.28,1) forwards;
 }
@@ -143,45 +130,46 @@ if (!play.value) {
   100% { transform: translateX(0);    opacity: 1; }
 }
 
-/* Rebote vertical contenido dentro de la altura del hero para no recortar la llanta. */
+/* Rebote vertical al entrar */
 .tire-bounce {
   width: 100%;
   height: 100%;
   transform-origin: 50% 100%;
 }
+
 .is-playing .tire-bounce {
   animation: tire-bounce 3.2s linear forwards;
 }
 
 @keyframes tire-bounce {
   0%   { transform: translateY(-56px) scale(1, 1.04); }
-  18%  { transform: translateY(0)     scale(1.06, 0.92); } /* 1er impacto */
+  18%  { transform: translateY(0)     scale(1.06, 0.92); }
   32%  { transform: translateY(-32px) scale(1, 1.02); }
-  46%  { transform: translateY(0)     scale(1.05, 0.94); } /* 2do impacto */
+  46%  { transform: translateY(0)     scale(1.05, 0.94); }
   58%  { transform: translateY(-16px) scale(1, 1.01); }
-  72%  { transform: translateY(0)     scale(1.03, 0.96); } /* 3er impacto */
+  72%  { transform: translateY(0)     scale(1.03, 0.96); }
   82%  { transform: translateY(-6px)  scale(1, 1); }
   92%  { transform: translateY(0)     scale(1.01, 0.99); }
-  100% { transform: translateY(0)     scale(1, 1); }       /* reposo */
+  100% { transform: translateY(0)     scale(1, 1); }
 }
 
-/* Giro antihorario (rueda hacia la izquierda) que desacelera y se detiene. */
+/* Giro continuo e infinito */
 .tire-rotate {
   width: 100%;
   height: 100%;
   transform-origin: 50% 50%;
   filter: drop-shadow(0 6px 12px rgba(0,0,0,0.45));
 }
+
 .is-playing .tire-rotate {
-  animation: tire-rotate 3.2s cubic-bezier(.22,.61,.28,1) forwards;
+  animation: tire-spin-continuous 5.5s linear infinite;
 }
 
-@keyframes tire-rotate {
+@keyframes tire-spin-continuous {
   0%   { transform: rotate(0deg); }
-  100% { transform: rotate(-720deg); }
+  100% { transform: rotate(-360deg); }
 }
 
-/* Accesibilidad: sin animación, aparece ya en su lugar de reposo. */
 @media (prefers-reduced-motion: reduce) {
   .tire-travel,
   .tire-bounce,
@@ -194,13 +182,13 @@ if (!play.value) {
   }
 }
 
-/* Móvil y tablet: llanta completa visible en el extremo derecho/inferior del hero sin recortes */
+/* Móvil y tablet: llanta anclada en la esquina inferior derecha del hero */
 @media (max-width: 960px) {
   .tire-travel {
-    --tw-size: clamp(110px, 26vw, 150px);
-    bottom: 8px;
+    --tw-size: clamp(130px, 32vw, 175px);
+    bottom: -28px;
     left: auto;
-    right: 12px;
+    right: -28px;
   }
 }
 </style>
