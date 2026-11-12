@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { useParts } from '@/composables/useParts'
 import {
   useAdminVehicleBrands,
@@ -102,12 +102,20 @@ function startNewBrand() {
   clearBrandLogo()
 }
 
+const brandFormEl = ref<HTMLElement | null>(null)
+
 function startEditBrand(brand: VehicleBrand) {
   editingBrandId.value = brand.id
   brandDraft.name = brand.name
   brandDraft.logo_url = brand.logo_url ?? null
   brandLogoFile.value = null
   brandLogoPreview.value = brand.logo_url ?? null
+  // El formulario de edición está arriba: llevamos la vista y el foco hasta él
+  // para que el usuario vea que realmente entró en modo edición.
+  nextTick(() => {
+    brandFormEl.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    brandFormEl.value?.querySelector<HTMLInputElement>('input[type="text"], input:not([type])')?.focus()
+  })
 }
 
 async function saveBrand() {
@@ -441,8 +449,8 @@ onMounted(load)
 <template>
   <section class="veh-mgr">
     <!-- Formulario superior para Marca de Auto -->
-    <form class="veh-mgr__form" @submit.prevent="saveBrand">
-      <label class="field">
+    <form ref="brandFormEl" class="veh-mgr__form" @submit.prevent="saveBrand">
+      <div class="field">
         <span class="field__label">
           {{ editingBrandId ? 'Editar marca de auto' : 'Nueva marca de auto' }}
         </span>
@@ -476,7 +484,7 @@ onMounted(load)
             Cancelar
           </button>
         </div>
-      </label>
+      </div>
       <p class="veh-mgr__hint">
         Administra la jerarquía completa: <b>Marca → Modelos → Motores</b>.
         Despliega cada marca para gestionar sus modelos y los motores de cada uno.

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { nextTick, onMounted, reactive, ref } from 'vue'
 import { useParts } from '@/composables/useParts'
 import { useAdminBrands, slugify } from '@/composables/useAdminBrands'
 import type { Brand } from '@/types/part'
@@ -53,12 +53,19 @@ function startNew() {
   clearLogo()
 }
 
+const formEl = ref<HTMLElement | null>(null)
+
 function startEdit(brand: Brand) {
   editingId.value = brand.id
   draft.name = brand.name
   draft.logo_url = brand.logo_url ?? null
   logoFile.value = null
   logoPreview.value = brand.logo_url ?? null
+  // El formulario está arriba: llevamos la vista y el foco hasta él.
+  nextTick(() => {
+    formEl.value?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    formEl.value?.querySelector<HTMLInputElement>('input:not([type])')?.focus()
+  })
 }
 
 async function save() {
@@ -120,8 +127,8 @@ onMounted(load)
 
 <template>
   <section class="cats">
-    <form class="cats__form" @submit.prevent="save">
-      <label class="field">
+    <form ref="formEl" class="cats__form" @submit.prevent="save">
+      <div class="field">
         <span class="field__label">
           {{ editingId ? 'Editar marca de repuesto' : 'Nueva marca de repuesto' }}
         </span>
@@ -155,7 +162,7 @@ onMounted(load)
             Cancelar
           </button>
         </div>
-      </label>
+      </div>
     </form>
 
     <p v-if="error" class="cats__error" role="alert">{{ error }}</p>
